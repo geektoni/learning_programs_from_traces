@@ -9,6 +9,9 @@ class ExecutionTrace(ABC):
     def get_id(self):
         return random.randint(1, 10)
 
+    def dict(self):
+        return {}
+
 class Node(ABC):
 
     def __init__(self, *initial_data, **kwargs):
@@ -17,6 +20,22 @@ class Node(ABC):
         :param initial_data:
         :param kwargs:
         """
+
+        self.parent = None
+        self.childs = []
+        self.visit_count = 0
+        self.total_action_value = []
+        self.prior = None
+        self.program_index = None
+        self.program_from_parent_index = None
+        self.observation = None
+        self.env_state = None
+        self.h_lstm = None
+        self.c_lstm = None
+        self.depth = 0
+        self.selected = False
+        self.args = None
+
         for dictionary in initial_data:
             for key in dictionary:
                 setattr(self, key, dictionary[key])
@@ -38,7 +57,8 @@ class Node(ABC):
             "h_lstm": h.copy(),
             "c_lstm": c.copy(),
             "depth": 0,
-            "selected": True
+            "selected": True,
+            "args": args
         })
 
 class MCTS(ABC):
@@ -47,19 +67,36 @@ class MCTS(ABC):
     given the library, the possible arguments and the model.
     """
 
-    def __init__(self, environment, policy, task_index: int, number_of_simulations: int=100) -> None:
+    def __init__(self, environment, policy, task_index: int, number_of_simulations: int=100, exploration=True) -> None:
         self.env = environment
         self.policy = policy
         self.task_index = task_index
-        self.n_simulations = number_of_simulations
+        self.number_of_simulations = number_of_simulations
+        self.exploration = exploration
+        self.dir_epsilon = 0.3
+        self.dir_noise = 0.3
+
+        self.clean_sub_executions = True
+        self.sub_tree_params = {}
+        self.level_closeness_coeff = 0.2
+        self.level_0_penalty = 0.3
+        self.qvalue_temperature = 0.3
+        self.c_puct = 0.4
+        self.gamma = 0.3
+
+        self.root_node = None
+
+        # These list will store the failed indices
+        self.programs_failed_indices = []
+        self.programs_failed_initstates = []
+
+
+    @abstractmethod
+    def _expand_node(self, node: Node):
         pass
 
     @abstractmethod
-    def _expand_node(self):
-        pass
-
-    @abstractmethod
-    def _simulate(self):
+    def _simulate(self, node: Node):
         pass
 
     @abstractmethod
@@ -72,4 +109,8 @@ class MCTS(ABC):
 
     @abstractmethod
     def sample_execution_trace(self):
+        pass
+
+    @abstractmethod
+    def _estimate_q_val(self, node):
         pass
