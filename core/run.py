@@ -27,13 +27,16 @@ if __name__ == "__main__":
     else:
         mcts = None
 
-    mcts = comm.bcast(mcts, root=0)
+    for episode in range(10):
 
-    traces = mcts.sample_execution_trace()
+        mcts = comm.bcast(mcts, root=0)
 
-    traces = comm.gather(traces, root=0)
+        traces = mcts.sample_execution_trace()
 
-    if rank == 0:
-        traces = [t.observations for t in traces]
-        print(traces)
+        traces = comm.gather(traces, root=0)
+
+        if rank == 0:
+            traces = [t.observations for t in traces]
+            print(f"Done {episode}: {len(traces)}")
+
 
