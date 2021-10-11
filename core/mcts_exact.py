@@ -74,6 +74,8 @@ class MCTSExact(MCTS):
                         "h_lstm": new_h.clone(),
                         "c_lstm": new_c.clone(),
                         "selected": False,
+                        "args": self.env.arguments[arg_index],
+                        "args_index": arg_index,
                         "depth": depth + 1,
                     })
 
@@ -81,7 +83,7 @@ class MCTSExact(MCTS):
                     new_nodes.append(new_child)
 
                     # Append the new nodes to graph
-                    node["childs"] = new_nodes
+                    node.childs = new_nodes
 
                     # This reward will be propagated backwards through the tree
                     value = float(value)
@@ -126,20 +128,20 @@ class MCTSExact(MCTS):
                 program_to_call = self.env.get_program_from_index(program_to_call_index)
                 arguments = node.args
 
-                if program_to_call_index == self.env.get_stop_action_index('index'):
+                if program_to_call_index == self.env.get_stop_action_index():
                     stop = True
 
                 elif self.env.get_program_level(program_to_call) == 0:
                     observation = self.env.act(program_to_call, arguments)
-                    node['observation'] = observation
-                    node['env_state'] = self.env.get_state()
+                    node.observation = observation
+                    node.env_state = self.env.get_state()
 
                 else:
                     # check if call corresponds to a recursive call
                     if program_to_call_index == self.task_index:
                         self.recursive_call = True
                     # if never been done, compute new tree to execute program
-                    if node['visit_count'] == 0.0:
+                    if node.visit_count == 0.0:
 
                         sub_mcts_init_state = self.env.get_state()
 
@@ -163,8 +165,8 @@ class MCTSExact(MCTS):
                         self.env.reset_to_state(node.env_state)
                         observation = self.env.get_observation()
 
-                    node['observation'] = observation
-                    node['env_state'] = self.env.get_state()
+                    node.observation = observation
+                    node.env_state = self.env.get_state()
 
         return max_depth_reached, has_expanded_a_node, node, value, failed_simulation
 
@@ -182,20 +184,20 @@ class MCTSExact(MCTS):
 
             program_level = self.env.get_program_level_from_index(root_node.program_index)
             # tag node as from the final execution trace (for visualization purpose)
-            root_node["selected"] = True
+            root_node.selected = True
 
-            if root_node['depth'] >= self.env.max_depth_dict[program_level]:
+            if root_node.depth >= self.env.max_depth_dict[program_level]:
                 max_depth_reached = True
 
             else:
-                env_state = root_node["env_state"]
+                env_state = root_node.env_state
 
                 # record obs, progs and lstm states only if they correspond to the current task at hand
-                self.lstm_states.append((root_node['h_lstm'], root_node['c_lstm']))
-                self.programs_index.append(root_node['program_index'])
-                self.observations.append(root_node['observation'])
-                self.previous_actions.append(root_node['program_from_parent_index'])
-                self.program_arguments.append(root_node['args'])
+                self.lstm_states.append((root_node.h_lstm, root_node.c_lstm))
+                self.programs_index.append(root_node.program_index)
+                self.observations.append(root_node.observation)
+                self.previous_actions.append(root_node.program_from_parent_index)
+                self.program_arguments.append(root_node.args)
                 self.rewards.append(None)
 
                 total_node_expanded_simulation = 0
@@ -204,10 +206,10 @@ class MCTSExact(MCTS):
                 for _ in range(self.number_of_simulations):
                     # run a simulation
                     self.recursive_call = False
-                    simulation_max_depth_reached, has_expanded_node, node, value, failed_simulation, total_node_expanded, total_sub_selected_nodes = self._run_simulation(
+                    simulation_max_depth_reached, has_expanded_node, node, value, failed_simulation = self._simulate(
                         root_node)
-                    total_node_expanded_simulation += total_node_expanded
-                    selected_nodes_count += total_sub_selected_nodes
+                    #total_node_expanded_simulation += total_node_expanded
+                    #selected_nodes_count += total_sub_selected_nodes
 
                     # get reward
                     if failed_simulation:
@@ -227,10 +229,10 @@ class MCTSExact(MCTS):
                     value = float(value)
 
                     # Propagate information backwards
-                    while node["parent"] is not None:
-                        node["visit_count"] += 1
-                        node["total_action_value"].append(value)
-                        node = node["parent"]
+                    while node.parent is not None:
+                        node.visit_count += 1
+                        node.total_action_value.append(value)
+                        node = node.parent
                     # Root node is not included in the while loop
                     self.root_node.total_action_value.append(value)
                     self.root_node.visit_count += 1
@@ -247,9 +249,9 @@ class MCTSExact(MCTS):
                     self.global_recursive_call = True
 
                 # Set new root node
-                root_node = [child for child in root_node["childs"]
-                                 if child["program_from_parent_index"] == program_to_call_index
-                                 and child["args_index"] == args_to_call_index]
+                root_node = [child for child in root_node.childs
+                                 if child.program_from_parent_index == program_to_call_index
+                                 and child.args_index == args_to_call_index]
 
                 # If we choose an illegal action from this point, we exit
                 if len(root_node) == 0:
@@ -265,15 +267,15 @@ class MCTSExact(MCTS):
 
                 # Apply chosen action
                 if not illegal_action:
-                    if program_to_call_index == self.env.programs_library[self.STOP_action_name]['index']:
+                    if program_to_call_index == self.env.programs_library["STOP"]['index']:
                         stop = True
                     else:
-                        self.env.reset_to_state(root_node["env_state"])
+                        self.env.reset_to_state(root_node.env_state)
 
         return root_node, max_depth_reached, illegal_action, selected_nodes_count
 
 
-def sample_execution_trace(self) -> ExecutionTrace:
+    def sample_execution_trace(self) -> ExecutionTrace:
         """
         Sample an execution trace from the tree by running many simulations until
         we converge or we reach the max tree depth. The execution trace is stored in
@@ -283,35 +285,59 @@ def sample_execution_trace(self) -> ExecutionTrace:
         not valid. This means we did not reach the end of the program.
         """
 
-        init_observation, args = self.env.start_task(self.task_index)
+        # Clear from previous content
+        self.empty_previous_trace()
+
+        init_observation, state_index  = self.env.start_task(self.task_index)
         with torch.no_grad():
             state_h, state_c = self.policy.init_tensors()
             env_init_state = self.env.get_state()
 
             root = Node.initialize_root(
-                self.task_index, args, init_observation, env_init_state, state_h, state_c
+                self.task_index, init_observation, env_init_state, state_h, state_c
             )
 
-        self._play_episode(root)
+        self.root_node = root
+
+        final_node, max_depth_reached, illegal_action, selected_nodes_count = self._play_episode(root)
+
+        if not illegal_action:
+            final_node.selected = True
+
+        # compute final task reward (with gamma penalization)
+        reward = self.env.get_reward()
+        if reward > 0 and not illegal_action:
+            task_reward = reward * (self.gamma ** final_node.depth)
+        else:
+            # TODO: add logic to save failed states for retraining
+            #self.programs_failed_states_indices[self.task_index].append((env_index, env_total_size))
+            #self.env.update_failing_envs(self.env_init_state, self.env.get_program_from_index(self.task_index))
+            task_reward = -1
+
+        # Replace None rewards by the true final task reward
+        self.rewards = list(
+            map(lambda x: torch.FloatTensor([task_reward]) if x is None else torch.FloatTensor([x]), self.rewards))
 
         self.env.end_task()
 
-        return ExecutionTrace()
+        # Generate execution trace
+        return ExecutionTrace(self.lstm_states, self.programs_index, self.observations, self.previous_actions,
+                              self.program_arguments, self.rewards, self.mcts_policies)
 
     def _estimate_q_val(self, node):
 
         best_child = None
         best_val = -np.inf
 
-        for child in node["childs"]:
-            if child["prior"] > 0.0:
+        for child in node.childs:
+            if child.prior > 0.0:
                 q_val_action = compute_q_value(child, self.qvalue_temperature)
 
-                action_utility = (self.c_puct * child["prior"] * np.sqrt(node["visit_count"])
-                                  * (1.0 / (1.0 + child["visit_count"])))
+                action_utility = (self.c_puct * child.prior * np.sqrt(node.visit_count)
+                                  * (1.0 / (1.0 + child.visit_count)))
                 q_val_action += action_utility
-                parent_prog_lvl = self.env.programs_library[self.env.idx_to_prog[node['program_index']]]['level']
-                action_prog_lvl = self.env.programs_library[self.env.idx_to_prog[child['program_from_parent_index']]][
+                parent_prog_lvl = self.env.programs_library[self.env.idx_to_prog[node.program_index]]['level']
+                action_prog_lvl = self.env.programs_library[self.env.idx_to_prog[child.program_from_parent_index]][
                     'level']
 
                 if parent_prog_lvl == action_prog_lvl:
@@ -332,3 +358,37 @@ def sample_execution_trace(self) -> ExecutionTrace:
                     best_child = child
 
         return best_child
+
+    def _sample_policy(self, root_node):
+        visits_policy = []
+        for child in root_node.childs:
+            if child.prior > 0.0:
+                visits_policy.append([child.program_from_parent_index, child.visit_count, child.args_index])
+
+        mcts_policy = torch.zeros(1, self.env.get_num_programs())
+        args_policy = torch.zeros(1, len(self.env.arguments))
+
+        for prog_index, visit, arg_index in visits_policy:
+            mcts_policy[0, prog_index] += visit
+            args_policy[0, arg_index] += visit
+
+        if not self.exploration:
+            mcts_policy = mcts_policy / mcts_policy.sum()
+            args_policy = args_policy / args_policy.sum()
+            return mcts_policy, args_policy, int(torch.argmax(mcts_policy)), int(torch.argmax(args_policy))
+
+        else:
+            mcts_policy = torch.pow(mcts_policy, self.temperature)
+            mcts_policy = mcts_policy / mcts_policy.sum()
+
+            if mcts_policy.sum() == 0.0:
+                mcts_policy = torch.ones(1, self.env.get_num_programs()) / self.env.get_num_programs()
+
+            args_policy = torch.pow(args_policy, self.temperature)
+            args_policy = args_policy / args_policy.sum()
+            if args_policy.sum() == 0.0:
+                args_policy = torch.ones(1, len(self.env.arguments)) / len(self.env.arguments)
+
+            args_sampled = int(torch.multinomial(args_policy, 1)[0, 0])
+
+            return mcts_policy, args_policy, int(torch.multinomial(mcts_policy, 1)[0, 0]), args_sampled

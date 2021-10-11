@@ -1,4 +1,5 @@
 import torch
+from utils.anomaly_detection import BetterAnomalyDetection
 
 def fix_policy(policy):
     """
@@ -18,10 +19,9 @@ def fix_policy(policy):
 
     return safe_policy
 
-
 def compute_q_value(node, qvalue_temperature):
     if node.visit_count > 0.0:
-        values = torch.FloatTensor(node['total_action_value'])
+        values = torch.FloatTensor(node.total_action_value)
         softmax = torch.exp(qvalue_temperature * values)
         softmax = softmax / softmax.sum()
         q_val_action = float(torch.dot(softmax, values))

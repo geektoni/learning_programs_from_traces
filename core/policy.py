@@ -7,3 +7,6 @@ class Policy():
 
     def init_tensors(self):
         return numpy.zeros(1), numpy.zeros(1)
+
+    def forward_once(self, observation, program_index, h, c):
+        pass
