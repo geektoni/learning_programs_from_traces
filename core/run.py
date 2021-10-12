@@ -36,7 +36,7 @@ if __name__ == "__main__":
         traces = comm.gather(traces, root=0)
 
         if rank == 0:
-            traces = [t.observations for t in traces]
+            traces = [len(t.observations) for t in traces]
             print(f"Done {episode}: {len(traces)}")
 
 
