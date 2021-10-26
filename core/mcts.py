@@ -6,7 +6,7 @@ import random
 class ExecutionTrace(ABC):
 
     def __init__(self, lstm_states, programs_index, observations, previous_actions,
-                              program_arguments, rewards, mcts_policies):
+                              program_arguments, rewards, mcts_policies, clean_sub_execution = True):
 
         self.lstm_states = lstm_states
         self.programs_index = programs_index
@@ -15,6 +15,7 @@ class ExecutionTrace(ABC):
         self.program_arguments = program_arguments
         self.rewards = rewards
         self.mcts_policies = mcts_policies
+        self.clean_sub_execution = clean_sub_execution
 
     def get_id(self):
         return random.randint(1, 10)
@@ -45,6 +46,7 @@ class Node(ABC):
         self.depth = 0
         self.selected = False
         self.args = None
+        self.args_index = None
 
         for dictionary in initial_data:
             for key in dictionary:
@@ -71,6 +73,25 @@ class Node(ABC):
             "args": np.array([0,0,0]),
             "args_index": 0
         })
+
+    def to_dict(self):
+        return {
+            "parent": self.parent,
+            "childs": self.childs,
+            "visit_count": self.visit_count,
+            "total_action_value": self.total_action_value,
+            "prior": self.prior,
+            "program_index": self.program_index,
+            "program_from_parent_index": self.program_from_parent_index,
+            "observation": self.observation,
+            "env_state": self.env_state,
+            "h_lstm": self.h_lstm,
+            "c_lstm": self.c_lstm,
+            "depth": self.depth,
+            "selected": self.selected,
+            "args": self.args,
+            "args_index": self.args_index
+        }
 
 class MCTS(ABC):
     """
