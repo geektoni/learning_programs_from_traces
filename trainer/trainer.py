@@ -33,6 +33,9 @@ class Trainer:
         # Loop over the traces and save them
         for t in traces:
 
+            if t.task_reward < 0:
+                continue
+
             observations = t.observations
             prog_indices = t.programs_index
             lstm_states = t.lstm_states

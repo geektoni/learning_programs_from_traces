@@ -12,12 +12,19 @@ class PrioritizedReplayBuffer():
         self.max_length = max_length
         self.p1 = p1
 
+    def get_total_successful_traces(self):
+        return sum([len(v[1]) for k, v in self.memory_task.items()])
+
+    def get_total_failed_traces(self):
+        return sum([len(v[0]) for k, v in self.memory_task.items()])
+
     def get_memory_length(self):
         return len(self.stack)
 
     def append_trace(self, trace):
         for tuple in trace:
             reward = 0 if tuple[4] <= 0.0 else 1
+            #if reward == 1:
             if len(self.stack) >= self.max_length:
                 t_id = self.stack[0][1]
                 r = 0 if self.stack[0][4] <= 0.0 else 1

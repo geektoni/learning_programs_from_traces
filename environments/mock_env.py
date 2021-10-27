@@ -16,8 +16,8 @@ class MockEnvEncoder(nn.Module):
 
     def __init__(self, observation_dim, encoding_dim=20):
         super(MockEnvEncoder, self).__init__()
-        self.l1 = nn.Linear(observation_dim, 100)
-        self.l2 = nn.Linear(100, encoding_dim)
+        self.l1 = nn.Linear(observation_dim, encoding_dim)
+        self.l2 = nn.Linear(encoding_dim, encoding_dim)
 
     def forward(self, x):
         x = F.relu(self.l1(x))
@@ -61,8 +61,7 @@ class MockEnv(Environment):
         self.memory = [0]
 
     def reset_env(self):
-        #self.memory[0] = random.randint(0,5)
-        self.memory = [0]
+        self.memory[0] = random.randint(0,1)
         self.has_been_reset = True
 
         return 0, 0
@@ -97,13 +96,16 @@ class MockEnv(Environment):
     def _count_10_postcondition(self, init_state, current_state):
         # TODO: testing only!!!! Change this!!!! It will return always true to facilitate testing.
         #return True
-        return self.memory[0] == 1
+        return self.memory[0] == 2
 
     def get_observation(self):
         return np.array([
-            self.memory[0] > 1,
+            self.memory[0] == 0,
             self.memory[0] == 1,
-            self.memory[0] < 1
+            self.memory[0] == 2,
+            self.memory[0] > 0,
+            self.memory[0] < 0,
+            self.memory[0] > 1
         ])
 
     def get_state(self):

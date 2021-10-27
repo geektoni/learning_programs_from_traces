@@ -108,17 +108,17 @@ class MCTS(ABC):
         self.task_index = task_index
         self.number_of_simulations = number_of_simulations
         self.exploration = exploration
-        self.dir_epsilon = 0.3
+        self.dir_epsilon = 0.35
         self.dir_noise = 0.3
 
         self.clean_sub_executions = True
         self.sub_tree_params = {}
-        self.level_closeness_coeff = 0.2
+        self.level_closeness_coeff = 3.0
         self.level_0_penalty = 0.3
-        self.qvalue_temperature = 0.3
-        self.temperature = 0.2
-        self.c_puct = 0.4
-        self.gamma = 0.3
+        self.qvalue_temperature = 1.0
+        self.temperature = 1.3
+        self.c_puct = 0.5
+        self.gamma = 0.97
 
         self.root_node = None
 
