@@ -5,20 +5,18 @@ import random
 
 class ExecutionTrace(ABC):
 
-    def __init__(self, lstm_states, programs_index, observations, previous_actions,
+    def __init__(self, lstm_states, programs_index, observations, previous_actions, task_reward,
                               program_arguments, rewards, mcts_policies, clean_sub_execution = True):
 
         self.lstm_states = lstm_states
         self.programs_index = programs_index
         self.observations = observations
         self.previous_actions = previous_actions
+        self.task_reward = task_reward
         self.program_arguments = program_arguments
         self.rewards = rewards
         self.mcts_policies = mcts_policies
         self.clean_sub_execution = clean_sub_execution
-
-    def get_id(self):
-        return random.randint(1, 10)
 
     def dict(self):
         return {}

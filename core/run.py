@@ -3,6 +3,7 @@ from agents.standard_policy import StandardPolicy
 from environments.mock_env import MockEnv, MockEnvEncoder
 from core.buffer.trace_buffer import PrioritizedReplayBuffer
 from trainer.trainer import Trainer
+from trainer.curriculum import CurriculumScheduler
 
 if __name__ == "__main__":
 
@@ -29,7 +30,8 @@ if __name__ == "__main__":
                         20, indices_non_primary_programs)
 
         trainer = Trainer(policy, buffer)
-
+        scheduler = CurriculumScheduler(0.97, num_non_primary_programs, programs_library,
+                                                   moving_average=0.99)
         mcts = MCTSExact(env, policy, 1)
     else:
         policy = None
@@ -37,17 +39,15 @@ if __name__ == "__main__":
         mcts = None
         trainer = None
         env = None
+        scheduler = None
 
-    actor_losses = 0
-    critic_losses = 0
-    arguments_losses = 0
-
-    for iteration in range(2):
+    for iteration in range(100):
 
         if rank==0:
-            mcts = MCTSExact(env, policy, 1)
+            task_index = scheduler.get_next_task_index()
+            mcts = MCTSExact(env, policy, task_index)
 
-        for episode in range(3):
+        for episode in range(10):
 
             mcts = comm.bcast(mcts, root=0)
 
@@ -62,6 +62,19 @@ if __name__ == "__main__":
                 print(f"Done {episode}: {len(traces)}: (Buffer size {buffer.get_memory_length()})")
 
         if rank == 0:
+
+            for idx in scheduler.get_tasks_of_maximum_level():
+                task_level = env.get_program_level_from_index(idx)
+                env = MockEnv()
+
+                validation_rewards = trainer.perform_validation_step(env, idx)
+                scheduler.update_statistics(idx, validation_rewards)
+                scheduler.print_statistics()
+                print('')
+                print('')
+
+
+
 
             print(f"[**] Done with iteration {iteration}")
 

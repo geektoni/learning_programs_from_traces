@@ -321,7 +321,7 @@ class MCTSExact(MCTS):
         self.env.end_task()
 
         # Generate execution trace
-        return ExecutionTrace(self.lstm_states, self.programs_index, self.observations, self.previous_actions,
+        return ExecutionTrace(self.lstm_states, self.programs_index, self.observations, self.previous_actions, task_reward,
                               self.program_arguments, self.rewards, self.mcts_policies, self.clean_sub_executions)
 
     def _estimate_q_val(self, node):

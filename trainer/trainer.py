@@ -1,12 +1,28 @@
+from core.mcts_exact import MCTSExact
 
 class Trainer:
 
-    def __init__(self, policy, buffer, batch_size=10, num_updates_per_episode=5):
+    def __init__(self, policy, buffer, batch_size=10, num_updates_per_episode=5, num_validation_episodes=10):
 
         self.policy = policy
         self.buffer = buffer
         self.batch_size = batch_size
         self.num_updates_per_episode = num_updates_per_episode
+        self.num_validation_episodes = num_validation_episodes
+
+    def perform_validation_step(self, env, task_index):
+
+        validation_rewards = []
+        for _ in range(self.num_validation_episodes):
+
+            mcts = MCTSExact(env, self.policy, task_index)
+
+            # Sample an execution trace with mcts using policy as a prior
+            trace = mcts.sample_execution_trace()
+            task_reward = trace.task_reward
+
+            validation_rewards.append(task_reward)
+        return validation_rewards
 
     def train_one_step(self, traces):
 
