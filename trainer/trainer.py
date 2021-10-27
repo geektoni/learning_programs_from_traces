@@ -2,7 +2,7 @@ from core.mcts_exact import MCTSExact
 
 class Trainer:
 
-    def __init__(self, policy, buffer, batch_size=10, num_updates_per_episode=5, num_validation_episodes=10):
+    def __init__(self, policy, buffer, batch_size=50, num_updates_per_episode=5, num_validation_episodes=10):
 
         self.policy = policy
         self.buffer = buffer

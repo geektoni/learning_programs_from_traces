@@ -18,6 +18,11 @@ class ExecutionTrace(ABC):
         self.mcts_policies = mcts_policies
         self.clean_sub_execution = clean_sub_execution
 
+    def get_trace_programs(self):
+        result =  [(p, arg) for p, arg in zip(self.previous_actions, self.program_arguments)]
+        # Discard the first element (since it will have a None action)
+        return result[1:]
+
     def dict(self):
         return {}
 

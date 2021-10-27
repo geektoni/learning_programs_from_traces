@@ -82,12 +82,12 @@ class MCTSExact(MCTS):
                     # Add the new node in a temporary array
                     new_nodes.append(new_child)
 
-                    # Append the new nodes to graph
-                    node.childs = new_nodes
+            # Append the new nodes to graph
+            node.childs = new_nodes
 
-                    # This reward will be propagated backwards through the tree
-                    value = float(value)
-                    return node, value, new_h.clone(), new_c.clone(), len(new_nodes)
+            # This reward will be propagated backwards through the tree
+            value = float(value)
+            return node, value, new_h.clone(), new_c.clone(), len(new_nodes)
 
     def _simulate(self, node):
 
@@ -218,7 +218,7 @@ class MCTSExact(MCTS):
                         # if node corresponds to end of an episode, backprogagate real reward
                         reward = self.env.get_reward()
                         if reward > 0:
-                            value = self.env.get_reward() * (self.gamma ** node['depth'])
+                            value = self.env.get_reward() * (self.gamma ** node.depth)
                         else:
                             value = -1.0
 
