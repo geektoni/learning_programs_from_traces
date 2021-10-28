@@ -4,6 +4,7 @@ from environments.mock_env import MockEnv, MockEnvEncoder
 from core.buffer.trace_buffer import PrioritizedReplayBuffer
 from trainer.trainer import Trainer
 from trainer.curriculum import CurriculumScheduler
+from utils import print_trace
 
 import torch
 import numpy as np
@@ -28,9 +29,11 @@ if __name__ == "__main__":
     scheduler = None
     writer = None
 
-    random.seed(0+rank)
-    np.random.seed(0+rank)
-    torch.manual_seed(0+rank)
+    seed = 2021
+
+    random.seed(seed+rank)
+    np.random.seed(seed+rank)
+    torch.manual_seed(seed+rank)
 
     if rank == 0:
         env = MockEnv()
@@ -55,7 +58,7 @@ if __name__ == "__main__":
 
         writer = SummaryWriter("./ignore/runs")
 
-    for iteration in range(1000):
+    for iteration in range(10000):
 
         if rank==0:
             task_index = scheduler.get_next_task_index()

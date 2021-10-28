@@ -44,7 +44,7 @@ class MockEnv(Environment):
                                                'SUB': {'level': 0, 'args': [0]},
                                                'COUNT_10': {'level': 1, 'args': [0]}}.items()))
 
-        self.max_depth_dict = {1: 4}
+        self.max_depth_dict = {1: 12}
 
         for idx, key in enumerate(sorted(list(self.programs_library.keys()))):
             self.programs_library[key]['index'] = idx
@@ -61,7 +61,7 @@ class MockEnv(Environment):
         self.memory = [0]
 
     def reset_env(self):
-        self.memory[0] = random.randint(0,1)
+        self.memory[0] = 0
         self.has_been_reset = True
 
         return 0, 0
@@ -96,7 +96,7 @@ class MockEnv(Environment):
     def _count_10_postcondition(self, init_state, current_state):
         # TODO: testing only!!!! Change this!!!! It will return always true to facilitate testing.
         #return True
-        return self.memory[0] == 2
+        return self.memory[0] == 3
 
     def get_observation(self):
         return np.array([
@@ -104,8 +104,7 @@ class MockEnv(Environment):
             self.memory[0] == 1,
             self.memory[0] == 2,
             self.memory[0] > 0,
-            self.memory[0] < 0,
-            self.memory[0] > 1
+            self.memory[0] < 0
         ])
 
     def get_state(self):

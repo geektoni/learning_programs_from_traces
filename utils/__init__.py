@@ -1,5 +1,13 @@
 import torch
 from utils.anomaly_detection import BetterAnomalyDetection
+from core.mcts import ExecutionTrace
+from environments.environment import Environment
+
+
+def print_trace(trace: ExecutionTrace, env: Environment) -> None:
+    print(f"Trace ({len(trace.previous_actions)}):")
+    for p in trace.previous_actions[1:]:
+        print(f"\t {env.get_program_from_index(p)}")
 
 def fix_policy(policy):
     """

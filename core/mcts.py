@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 
 import numpy as np
-import random
 
 class ExecutionTrace(ABC):
 
@@ -50,6 +49,8 @@ class Node(ABC):
         self.selected = False
         self.args = None
         self.args_index = None
+        self.denom = 0.0
+        self.estimated_qval = 0.0
 
         for dictionary in initial_data:
             for key in dictionary:
@@ -74,7 +75,9 @@ class Node(ABC):
             "depth": 0,
             "selected": True,
             "args": np.array([0,0,0]),
-            "args_index": 0
+            "args_index": 0,
+            "denom": 0.0,
+            "estimated_qval": 0.0
         })
 
     def to_dict(self):
@@ -93,7 +96,9 @@ class Node(ABC):
             "depth": self.depth,
             "selected": self.selected,
             "args": self.args,
-            "args_index": self.args_index
+            "args_index": self.args_index,
+            "denom": self.denom,
+            "estimated_qval": self.estimated_qval
         }
 
 class MCTS(ABC):
@@ -108,13 +113,13 @@ class MCTS(ABC):
         self.task_index = task_index
         self.number_of_simulations = number_of_simulations
         self.exploration = exploration
-        self.dir_epsilon = 0.35
+        self.dir_epsilon = 0.03
         self.dir_noise = 0.3
 
         self.clean_sub_executions = True
         self.sub_tree_params = {}
         self.level_closeness_coeff = 3.0
-        self.level_0_penalty = 0.3
+        self.level_0_penalty = 1
         self.qvalue_temperature = 1.0
         self.temperature = 1.3
         self.c_puct = 0.5
