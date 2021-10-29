@@ -44,7 +44,7 @@ class MockEnv(Environment):
                                                'SUB': {'level': 0, 'args': [0]},
                                                'COUNT_10': {'level': 1, 'args': [0]}}.items()))
 
-        self.max_depth_dict = {1: 12}
+        self.max_depth_dict = {1: 10}
 
         for idx, key in enumerate(sorted(list(self.programs_library.keys()))):
             self.programs_library[key]['index'] = idx
@@ -61,7 +61,7 @@ class MockEnv(Environment):
         self.memory = [0]
 
     def reset_env(self):
-        self.memory[0] = 0
+        self.memory[0] = random.randint(-5, 10)
         self.has_been_reset = True
 
         return 0, 0
@@ -103,8 +103,12 @@ class MockEnv(Environment):
             self.memory[0] == 0,
             self.memory[0] == 1,
             self.memory[0] == 2,
+            self.memory[0] == 3,
+            self.memory[0] == 4,
+            self.memory[0] == 5,
             self.memory[0] > 0,
-            self.memory[0] < 0
+            self.memory[0] < 0,
+            self.memory[0] > 5
         ])
 
     def get_state(self):
