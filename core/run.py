@@ -1,10 +1,8 @@
 from core.mcts_exact import MCTSExact
-from agents.standard_policy import StandardPolicy
-from environments.mock_env import MockEnv, MockEnvEncoder
 from core.buffer.trace_buffer import PrioritizedReplayBuffer
 from trainer.trainer import Trainer
 from trainer.curriculum import CurriculumScheduler
-from utils import print_trace
+from utils import import_dyn_class
 
 import torch
 import numpy as np
@@ -12,7 +10,16 @@ import random
 
 from tensorboardX import SummaryWriter
 
+from argparse import ArgumentParser
+import yaml
+
 if __name__ == "__main__":
+
+    parser = ArgumentParser()
+    parser.add_argument("--config", type=str, help="Path to the file with the experiment configuration")
+
+    args = parser.parse_args()
+    config = yaml.load(open(args.config),Loader=yaml.FullLoader)
 
     from mpi4py import MPI
 
@@ -29,14 +36,19 @@ if __name__ == "__main__":
     scheduler = None
     writer = None
 
-    seed = 2021
+    seed = config.get("general").get("seed", 0)
 
     random.seed(seed+rank)
     np.random.seed(seed+rank)
     torch.manual_seed(seed+rank)
 
+    MCTS_CLASS = import_dyn_class(config.get("training").get("mcts").get("name"))
+
     if rank == 0:
-        env = MockEnv()
+
+        env = import_dyn_class(config.get("environment").get("name"))(
+            config.get("environment").get("configuration_parameters", {})
+        )
 
         num_programs = env.get_num_programs()
         num_non_primary_programs = env.get_num_non_primary_programs()
@@ -44,27 +56,56 @@ if __name__ == "__main__":
         programs_library = env.programs_library
 
         idx_tasks = [prog['index'] for key, prog in env.programs_library.items() if prog['level'] > 0]
-        buffer = PrioritizedReplayBuffer(200, idx_tasks, p1=0.8)
 
-        encoder = MockEnvEncoder(env.get_obs_dimension(), 20)
+        # Initialize the replay buffer. It is needed to store the various traces for training
+        buffer = PrioritizedReplayBuffer(config.get("training").get("replay_buffer").get("size"),
+                                         idx_tasks,
+                                         p1=config.get("training").get("replay_buffer").get("sampling_correct_probability")
+                                         )
+
+        # Set up the encoder needed for the environment
+        encoder = import_dyn_class(config.get("environment").get("encoder").get("name"))(
+            env.get_obs_dimension(),
+            config.get("environment").get("encoder").get("configuration_parameters").get("encoding_dim")
+        )
+
         indices_non_primary_programs = [p['index'] for _, p in programs_library.items() if p['level'] > 0]
-        policy = StandardPolicy(encoder, 50, num_programs, num_non_primary_programs, 100,
-                        20, indices_non_primary_programs)
 
-        trainer = Trainer(policy, buffer, batch_size=40)
-        scheduler = CurriculumScheduler(0.97, num_non_primary_programs, programs_library,
-                                                   moving_average=0.99)
-        mcts = MCTSExact(env, policy, 1)
+        policy = import_dyn_class(config.get("policy").get("name"))(
+            encoder,
+            config.get("policy").get("hidden_size"),
+            num_programs, num_non_primary_programs,
+            config.get("policy").get("embedding_dim"),
+            config.get("policy").get("encoding_dim"),
+            indices_non_primary_programs
+        )
 
-        writer = SummaryWriter("./ignore/runs")
+        # Set up the trainer algorithm
+        trainer = Trainer(policy, buffer,
+                          batch_size=config.get("training").get("trainer").get("batch_size"))
 
-    for iteration in range(10000):
+        # Set up the curriculum scheduler that decides the next experiments to be done
+        scheduler = CurriculumScheduler(config.get("training").get("curriculum_scheduler").get("next_action_accuracy"),
+                                        num_non_primary_programs, programs_library,
+                                        moving_average=config.get("training").get("curriculum_scheduler").get("moving_average"))
+
+        mcts = import_dyn_class(config.get("training").get("mcts").get("name"))(
+            env, policy, 1,
+            **config.get("training").get("mcts").get("configuration_parameters")
+        )
+
+        writer = SummaryWriter(config.get("general").get("tensorboard_dir"))
+
+    for iteration in range(config.get("training").get("num_iterations")):
 
         if rank==0:
             task_index = scheduler.get_next_task_index()
-            mcts = MCTSExact(env, policy, task_index)
+            mcts = MCTS_CLASS(
+                env, policy, 1,
+                **config.get("training").get("mcts").get("configuration_parameters")
+            )
 
-        for episode in range(10):
+        for episode in range(config.get("training").get("num_episodes_per_iteration")):
 
             mcts = comm.bcast(mcts, root=0)
 
@@ -87,7 +128,9 @@ if __name__ == "__main__":
 
             for idx in scheduler.get_tasks_of_maximum_level():
                 task_level = env.get_program_level_from_index(idx)
-                env = MockEnv()
+                env = MCTS_CLASS(
+                    config.get("environment").get("configuration_parameters", {})
+                )
 
                 validation_rewards = trainer.perform_validation_step(env, idx)
                 scheduler.update_statistics(idx, validation_rewards)

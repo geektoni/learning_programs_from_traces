@@ -107,23 +107,26 @@ class MCTS(ABC):
     given the library, the possible arguments and the model.
     """
 
-    def __init__(self, environment, policy, task_index: int, number_of_simulations: int=100, exploration=True) -> None:
+    def __init__(self, environment, policy, task_index: int, number_of_simulations: int=100, exploration=True,
+                 dir_noise: float=0.03, dir_epsilon: float=0.3,
+                 level_closeness_coeff: float=3.0, level_0_penalty: float=1, qvalue_temperature: float=1.0,
+                 temperature: float=1.3, c_puct: float=0.5, gamma: float=0.97) -> None:
         self.env = environment
         self.policy = policy
         self.task_index = task_index
         self.number_of_simulations = number_of_simulations
         self.exploration = exploration
-        self.dir_epsilon = 0.03
-        self.dir_noise = 0.3
+        self.dir_epsilon = dir_noise
+        self.dir_noise = dir_epsilon
 
         self.clean_sub_executions = True
         self.sub_tree_params = {}
-        self.level_closeness_coeff = 3.0
-        self.level_0_penalty = 1
-        self.qvalue_temperature = 1.0
-        self.temperature = 1.3
-        self.c_puct = 0.5
-        self.gamma = 0.97
+        self.level_closeness_coeff = level_closeness_coeff
+        self.level_0_penalty = level_0_penalty
+        self.qvalue_temperature = qvalue_temperature
+        self.temperature = temperature
+        self.c_puct = c_puct
+        self.gamma = gamma
 
         self.root_node = None
 

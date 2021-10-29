@@ -26,7 +26,7 @@ class MockEnvEncoder(nn.Module):
 
 class MockEnv(Environment):
 
-    def __init__(self):
+    def __init__(self, config_args=None):
 
         self.prog_to_func = OrderedDict(sorted({'STOP': self._stop,
                                                 'ADD': self._add,

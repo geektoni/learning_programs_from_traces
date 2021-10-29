@@ -3,6 +3,22 @@ from utils.anomaly_detection import BetterAnomalyDetection
 from core.mcts import ExecutionTrace
 from environments.environment import Environment
 
+import importlib
+
+def import_dyn_class(path: str):
+    """
+    Import dynamically a python class which can be then used
+    :param path: path to the class
+    :return: the class which can be instantiated
+    """
+
+    class_name = path.split(".")[-1]
+    module_name = ".".join(path.split(".")[:-1])
+
+    module = importlib.import_module(module_name)
+    class_ = getattr(module, class_name)
+
+    return class_
 
 def print_trace(trace: ExecutionTrace, env: Environment) -> None:
     print(f"Trace ({len(trace.previous_actions)}):")
