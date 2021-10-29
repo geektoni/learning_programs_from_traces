@@ -2,6 +2,7 @@ general:
   seed: 2021
   save_model: true
   save_model_dir: "ignore/models"
+  save_model_name: "test_experiment"
   tensorboard: true
   tensorboard_dir: "ignore/runs"
 

@@ -12,6 +12,8 @@ from tensorboardX import SummaryWriter
 
 from argparse import ArgumentParser
 import yaml
+import time
+import os
 
 if __name__ == "__main__":
 
@@ -41,8 +43,15 @@ if __name__ == "__main__":
     random.seed(seed+rank)
     np.random.seed(seed+rank)
     torch.manual_seed(seed+rank)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
     MCTS_CLASS = import_dyn_class(config.get("training").get("mcts").get("name"))
+
+    ts = time.localtime(time.time())
+    date_time = '{}_{}_{}-{}_{}_{}.model'.format(ts[0], ts[1], ts[2], ts[3], ts[4], ts[5])
+    save_model_path = os.path.join(config.get("general").get("save_model_dir"),
+                                   config.get("general").get("save_model_name")+"-"+date_time)
 
     if rank == 0:
 
@@ -128,7 +137,8 @@ if __name__ == "__main__":
 
             for idx in scheduler.get_tasks_of_maximum_level():
                 task_level = env.get_program_level_from_index(idx)
-                env = MCTS_CLASS(
+                mcts = MCTS_CLASS(
+                    env, policy, idx,
                     config.get("environment").get("configuration_parameters", {})
                 )
 
@@ -144,5 +154,9 @@ if __name__ == "__main__":
                     writer.add_scalar('validation/' + v_task_name, scheduler.get_statistic(idx), iteration)
 
             print(f"[**] Done with iteration {iteration}")
+
+            # Save policy
+            if config.get("general").get("save_model"):
+                torch.save(policy.state_dict(), save_model_path)
 
 
