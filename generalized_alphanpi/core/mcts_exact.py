@@ -1,5 +1,5 @@
-from core.mcts import MCTS, Node, ExecutionTrace
-from utils import compute_q_value
+from generalized_alphanpi.core import MCTS, Node, ExecutionTrace
+from generalized_alphanpi.utils import compute_q_value
 
 import torch
 import numpy as np

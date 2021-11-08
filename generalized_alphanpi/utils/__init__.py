@@ -1,7 +1,6 @@
 import torch
-from utils.anomaly_detection import BetterAnomalyDetection
-from core.mcts import ExecutionTrace
-from environments.environment import Environment
+from generalized_alphanpi.core import ExecutionTrace
+from generalized_alphanpi.environments.environment import Environment
 
 import importlib
 
