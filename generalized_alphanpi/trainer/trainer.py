@@ -1,4 +1,4 @@
-from core.mcts_exact import MCTSExact
+from generalized_alphanpi.core import MCTSExact
 
 class Trainer:
 

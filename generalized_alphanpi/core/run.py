@@ -1,8 +1,7 @@
-from core.mcts_exact import MCTSExact
-from core.buffer.trace_buffer import PrioritizedReplayBuffer
-from trainer.trainer import Trainer
-from trainer.curriculum import CurriculumScheduler
-from utils import import_dyn_class
+from generalized_alphanpi.core.buffer import PrioritizedReplayBuffer
+from generalized_alphanpi.trainer.trainer import Trainer
+from generalized_alphanpi.trainer.curriculum import CurriculumScheduler
+from generalized_alphanpi.utils import import_dyn_class
 
 import torch
 import numpy as np

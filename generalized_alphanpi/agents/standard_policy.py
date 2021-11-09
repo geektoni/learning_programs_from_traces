@@ -4,7 +4,7 @@ from torch.nn.init import uniform_
 import torch.nn.functional as F
 import numpy as np
 
-from utils import BetterAnomalyDetection
+from generalized_alphanpi.utils import BetterAnomalyDetection
 
 class CriticNet(Module):
     def __init__(self, hidden_size):

@@ -1,4 +1,4 @@
-from environments.environment import Environment
+from generalized_alphanpi.environments.environment import Environment
 from collections import OrderedDict
 
 import numpy as np
