@@ -170,3 +170,7 @@ class Environment(ABC):
         current_task = self.get_program_from_index(self.current_task_index)
         current_task_postcondition = self.prog_to_postcondition[current_task]
         return int(current_task_postcondition(task_init_state, state))
+
+    @abstractmethod
+    def get_additional_parameters(self):
+        return {}

@@ -1,5 +1,5 @@
 import torch
-from generalized_alphanpi.core import ExecutionTrace
+from generalized_alphanpi.core.mcts import ExecutionTrace
 from generalized_alphanpi.environments.environment import Environment
 
 import importlib

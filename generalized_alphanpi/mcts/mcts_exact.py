@@ -1,4 +1,4 @@
-from generalized_alphanpi.core import MCTS, Node, ExecutionTrace
+from generalized_alphanpi.core.mcts import MCTS, Node, ExecutionTrace
 from generalized_alphanpi.utils import compute_q_value
 
 import torch

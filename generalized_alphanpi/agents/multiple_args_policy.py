@@ -1,40 +1,45 @@
 import torch
+import torch.nn as nn
 from torch.nn import Linear, LSTMCell, Module, Embedding
 from torch.nn.init import uniform_
 import torch.nn.functional as F
 import numpy as np
 
 from generalized_alphanpi.utils.anomaly_detection import BetterAnomalyDetection
-
-class CriticNet(Module):
-    def __init__(self, hidden_size):
-        super(CriticNet, self).__init__()
-        self.l1 = Linear(hidden_size, hidden_size//2)
-        self.l2 = Linear(hidden_size//2, 1)
-
-    def forward(self, hidden_state):
-        x = F.relu(self.l1(hidden_state))
-        x = torch.tanh(self.l2(x))
-        return x
-
-
-class ActorNet(Module):
-    def __init__(self, hidden_size, num_programs):
-        super(ActorNet, self).__init__()
-        self.l1 = Linear(hidden_size, hidden_size//2)
-        self.l2 = Linear(hidden_size//2, num_programs)
-
-    def forward(self, hidden_state):
-        x = F.relu(self.l1(hidden_state))
-        x = F.softmax(self.l2(x), dim=-1)
-        return x
-
+from generalized_alphanpi.agents.standard_policy import ActorNet, CriticNet
 
 class ArgumentsNet(Module):
-    def __init__(self, hidden_size, num_arguments=8):
+
+    def __init__(self, hidden_size, args_types_available):
+        """
+        args_type_available = {
+            "INT": list(range(0,100)),
+            "CAT": ["A", "B", "C"]
+        }
+
+        :param hidden_size:
+        :param args_types_available:
+        """
         super(ArgumentsNet, self).__init__()
+
+        self.arguments = nn.ModuleList()
+        for type_idx, a in args_types_available.items():
+            self.arguments.append(ArgumentsSingleNet(hidden_size, argument_ranges=a))
+
+    def forward(self, x):
+        results = []
+        for i, l in enumerate(self.arguments):
+            results.append(self.arguments[i](x))
+        return torch.cat(results, 1)
+
+
+class ArgumentsSingleNet(Module):
+    def __init__(self, hidden_size, argument_ranges=None):
+        super(ArgumentsSingleNet, self).__init__()
+        if argument_ranges is None:
+            argument_ranges = [1,2,3]
         self.l1 = Linear(hidden_size, hidden_size//2)
-        self.l2 = Linear(hidden_size//2, num_arguments)
+        self.l2 = Linear(hidden_size//2, len(argument_ranges))
 
     def forward(self, hidden_state):
         x = F.relu(self.l1(hidden_state))
@@ -42,9 +47,9 @@ class ArgumentsNet(Module):
         return x
 
 
-class StandardPolicy(Module):
+class MultipleArgsPolicy(Module):
     def __init__(self, encoder, hidden_size, num_programs, num_non_primary_programs, embedding_dim, encoding_dim,
-                 indices_non_primary_programs, learning_rate=1e-3, use_args=True, use_gpu=False):
+                 indices_non_primary_programs, programs_types, types, learning_rate=1e-3, use_args=True, use_gpu=False):
 
         super().__init__()
 
@@ -54,7 +59,8 @@ class StandardPolicy(Module):
 
         self._hidden_size = hidden_size
         self.num_programs = num_programs
-        self.num_arguments = 8
+        self.programs_types = programs_types
+        self.types = types
         self.num_non_primary_programs = num_non_primary_programs
 
         self.embedding_dim = embedding_dim
@@ -65,11 +71,14 @@ class StandardPolicy(Module):
         self.encoder = encoder.to(self.device)
 
         self.lstm = LSTMCell(self.encoding_dim + self.embedding_dim, self._hidden_size).to(self.device)
+        self.lstm_args = LSTMCell(self.encoding_dim + self.embedding_dim, self._hidden_size).to(self.device)
         self.critic = CriticNet(self._hidden_size).to(self.device)
         self.actor = ActorNet(self._hidden_size, self.num_programs).to(self.device)
 
         self.use_args = use_args
-        self.arguments = ArgumentsNet(self._hidden_size, num_arguments=self.num_arguments).to(self.device)
+
+        # Generate N decoders given the types and the type range
+        self.arguments = ArgumentsNet(self._hidden_size, self.types).to(self.device)
 
         self.init_networks()
         self.init_optimizer(lr=learning_rate)
@@ -90,6 +99,9 @@ class StandardPolicy(Module):
         for p in self.lstm.parameters():
             uniform_(p, self._uniform_init[0], self._uniform_init[1])
 
+        for p in self.lstm_args.parameters():
+            uniform_(p, self._uniform_init[0], self._uniform_init[1])
+
         for p in self.critic.parameters():
             uniform_(p, self._uniform_init[0], self._uniform_init[1])
 
@@ -106,24 +118,7 @@ class StandardPolicy(Module):
         '''
         self.optimizer = torch.optim.Adam(self.parameters(), lr=lr)
 
-    def _one_hot_encode(self, digits, basis=6):
-        """One hot encode a digit with basis. The digit may be None,
-        the encoding associated to None is a vector full of zeros.
-        Args:
-          digits: batch (list) of digits
-          basis:  (Default value = 6)
-        Returns:
-          a numpy array representing the 10-hot-encoding of the digit
-        """
-        encoding = torch.zeros(len(digits), basis)
-        digits_filtered = list(filter(lambda x: x is not None, digits))
-
-        if len(digits_filtered) != 0:
-            tmp = [[idx for idx, digit in enumerate(digits) if digit is not None], digits_filtered]
-            encoding[tmp] = 1.0
-        return encoding
-
-    def predict_on_batch(self, e_t, i_t, h_t, c_t):
+    def predict_on_batch(self, e_t, i_t, h_t, c_t, h_t_args, c_t_args):
         """Run one NPI inference.
         Args:
           e_t: batch of environment observation
@@ -140,14 +135,14 @@ class StandardPolicy(Module):
 
         new_h, new_c = self.lstm(torch.cat([s_t, p_t], -1), (h_t, c_t))
 
+        new_h_args, new_c_args = self.lstm_args(torch.cat([s_t, p_t], -1), (h_t_args, c_t_args))
+
         actor_out = self.actor(new_h)
         critic_out = self.critic(new_h)
-        if self.use_args:
-            args_out = self.arguments(new_h)
-        else:
-            args_out = 0
 
-        return actor_out, critic_out, args_out, new_h, new_c
+        args_out = self.arguments(new_h_args)
+
+        return actor_out, critic_out, args_out, new_h, new_c, new_h_args, new_c_args
 
     def train_on_batch(self, batch, check_autograd=False):
         """perform optimization step.
@@ -169,32 +164,26 @@ class StandardPolicy(Module):
         with BetterAnomalyDetection(check_autograd):
 
             self.optimizer.zero_grad()
-            policy_predictions, value_predictions, args_predictions, _, _ = self.predict_on_batch(e_t, i_t, h_t, c_t)
+            policy_predictions, value_predictions, args_predictions, _, _, _, _ = self.predict_on_batch(e_t, i_t, h_t, c_t)
 
             policy_loss = -torch.mean(
                 policy_labels[:, 0:self.num_programs] * torch.log(policy_predictions + self.epsilon), dim=-1
             ).mean()
 
-            if self.use_args:
-                args_loss = -torch.mean(
-                    policy_labels[:, self.num_programs:] * torch.log(args_predictions + self.epsilon), dim=-1
-                ).mean()
-            else:
-                args_loss = torch.FloatTensor([0])
+            args_loss = -torch.mean(
+                policy_labels[:, self.num_programs:] * torch.log(args_predictions + self.epsilon), dim=-1
+            ).mean()
 
             value_loss = torch.pow(value_predictions - value_labels, 2).mean()
 
-            if self.use_args:
-                total_loss = (policy_loss + args_loss + value_loss)/3
-            else:
-                total_loss = (policy_loss + value_loss) / 2
+            total_loss = (policy_loss + args_loss + value_loss)/3
 
             total_loss.backward()
             self.optimizer.step()
 
         return policy_loss.item(), value_loss.item(), args_loss.item(), total_loss.item()
 
-    def forward_once(self, e_t, i_t, h, c):
+    def forward_once(self, e_t, i_t, h, c, h_args, c_args):
         """Run one NPI inference using predict.
         Args:
           e_t: current environment observation
@@ -206,11 +195,11 @@ class StandardPolicy(Module):
           the probabilities over programs)
         """
         e_t = torch.FloatTensor(e_t)
-        e_t, h, c = e_t.view(1, -1), h.view(1, -1), c.view(1, -1)
+        e_t, h, c, h_args, c_args = e_t.view(1, -1), h.view(1, -1), c.view(1, -1), h_args.view(1, -1), c_args.view(1, -1)
         with torch.no_grad():
             e_t = e_t.to(self.device)
-            actor_out, critic_out, args_out, new_h, new_c = self.predict_on_batch(e_t, [i_t], h, c)
-        return actor_out, critic_out, args_out, new_h, new_c
+            actor_out, critic_out, args_out, new_h, new_c, new_h_args, new_c_args = self.predict_on_batch(e_t, [i_t], h, c, h_args, c_args)
+        return actor_out, critic_out, args_out, new_h, new_c, new_h_args, new_c_args
 
     def init_tensors(self):
         """Creates tensors representing the internal states of the lstm filled with zeros.
@@ -221,4 +210,9 @@ class StandardPolicy(Module):
         h = torch.zeros(1, self._hidden_size)
         c = torch.zeros(1, self._hidden_size)
         h, c = h.to(self.device), c.to(self.device)
-        return h, c
+
+        h_args = torch.zeros(1, self._hidden_size)
+        c_args = torch.zeros(1, self._hidden_size)
+        h_args, c_args = h_args.to(self.device), c_args.to(self.device)
+
+        return h, c, h_args, c_args

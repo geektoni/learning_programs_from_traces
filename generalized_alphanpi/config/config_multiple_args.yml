@@ -13,7 +13,7 @@ training:
   num_episodes_per_iteration: 10
 
   mcts:
-    name: "mcts.mcts_exact.MCTSExact"
+    name: "generalized_alphanpi.mcts.mcts_multiple_args.MCTSMultipleArgs"
     configuration_parameters:
       exploration: true
       number_of_simulations: 10
@@ -40,17 +40,17 @@ training:
 
 # Environment of this experiment
 environment:
-  name: "environments.mock_env.MockEnv"
+  name: "generalized_alphanpi.environments.mock_env_multiple_args.MockEnvMultipleArgs"
 
   # Encoder for the environment of this experiment
   encoder:
-    name: "environments.mock_env.MockEnvEncoder"
+    name: "generalized_alphanpi.environments.mock_env_multiple_args.MockEnvEncoder"
     configuration_parameters:
       encoding_dim: 20
 
 # Policy used for this experiment
 policy:
-  name: "agents.standard_policy.StandardPolicy"
+  name: "generalized_alphanpi.agents.multiple_args_policy.MultipleArgsPolicy"
   hidden_size: 50
   embedding_dim: 100
   encoding_dim: 20 # This needs to be equal to the encoder embedding_dim

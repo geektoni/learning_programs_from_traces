@@ -1,4 +1,4 @@
-from generalized_alphanpi.core.buffer import PrioritizedReplayBuffer
+from generalized_alphanpi.core.buffer.trace_buffer import PrioritizedReplayBuffer
 from generalized_alphanpi.trainer.trainer import Trainer
 from generalized_alphanpi.trainer.curriculum import CurriculumScheduler
 from generalized_alphanpi.utils import import_dyn_class
@@ -79,17 +79,20 @@ if __name__ == "__main__":
 
         indices_non_primary_programs = [p['index'] for _, p in programs_library.items() if p['level'] > 0]
 
+        additional_arguments_from_env = env.get_additional_parameters()
+
         policy = import_dyn_class(config.get("policy").get("name"))(
             encoder,
             config.get("policy").get("hidden_size"),
             num_programs, num_non_primary_programs,
             config.get("policy").get("embedding_dim"),
             config.get("policy").get("encoding_dim"),
-            indices_non_primary_programs
+            indices_non_primary_programs,
+            **additional_arguments_from_env
         )
 
         # Set up the trainer algorithm
-        trainer = Trainer(policy, buffer,
+        trainer = Trainer(policy, buffer, config.get("training").get("mcts").get("name"),
                           batch_size=config.get("training").get("trainer").get("batch_size"))
 
         # Set up the curriculum scheduler that decides the next experiments to be done

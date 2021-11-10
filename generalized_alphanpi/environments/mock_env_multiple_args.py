@@ -24,7 +24,7 @@ class MockEnvEncoder(nn.Module):
         x = torch.tanh(self.l2(x))
         return x
 
-class MockEnv(Environment):
+class MockEnvMultipleArgs(Environment):
 
     def __init__(self, config_args=None):
 
@@ -39,31 +39,37 @@ class MockEnv(Environment):
 
         self.prog_to_postcondition = OrderedDict(sorted({'COUNT_10': self._count_10_postcondition}.items()))
 
-        self.programs_library = OrderedDict(sorted({'STOP': {'level': -1, 'args':[0]},
-                                               'ADD': {'level': 0, 'args': [0]},
-                                               'SUB': {'level': 0, 'args': [0]},
-                                               'COUNT_10': {'level': 1, 'args': [0]}}.items()))
+        self.programs_library = OrderedDict(sorted({'STOP': {'level': -1, 'args': 'NONE'},
+                                               'ADD': {'level': 0, 'args': 'INT'},
+                                               'SUB': {'level': 0, 'args': 'INT'},
+                                               'COUNT_10': {'level': 1, 'args': 'NONE'}}.items()))
+
+        self.arguments = OrderedDict(sorted({
+            "INT": list(range(0,10)),
+            "NONE": [0]
+        }.items()))
+
+        self.complete_arguments = []
+
+        for k, v in self.arguments.items():
+            self.complete_arguments += v
+
+        self.arguments_index = [(i, v) for i, v in enumerate(self.complete_arguments)]
 
         self.max_depth_dict = {1: 10}
 
         for idx, key in enumerate(sorted(list(self.programs_library.keys()))):
             self.programs_library[key]['index'] = idx
 
-        self.available_args = [[0, 0, 0], [1, 0, 0], [0, 1, 0],
-                                   [0, 0, 1], [1, 1, 0], [1, 0, 1],
-                                   [0, 1, 1], [1, 1, 1]]
-
         super().__init__(self.prog_to_func, self.prog_to_precondition, self.prog_to_postcondition,
-                         self.programs_library, self.available_args, self.max_depth_dict)
+                         self.programs_library, self.arguments, self.max_depth_dict)
 
-    def get_additional_parameters(self):
-        return {}
 
     def init_env(self):
         self.memory = [0]
 
     def reset_env(self):
-        self.memory[0] = random.randint(-5, 10)
+        self.memory[0] = random.randint(-5, 50)
         self.has_been_reset = True
 
         return 0, 0
@@ -78,10 +84,10 @@ class MockEnv(Environment):
         return True
 
     def _add(self, arguments=None):
-        self.memory[0] += 1
+        self.memory[0] += arguments
 
     def _sub(self, arguments=None):
-        self.memory[0] -= 1
+        self.memory[0] -= arguments
 
     def _stop_precondition(self):
         return True
@@ -98,19 +104,17 @@ class MockEnv(Environment):
     def _count_10_postcondition(self, init_state, current_state):
         # TODO: testing only!!!! Change this!!!! It will return always true to facilitate testing.
         #return True
-        return self.memory[0] == 3
+        return self.memory[0] == 50
 
     def get_observation(self):
         return np.array([
-            self.memory[0] == 0,
-            self.memory[0] == 1,
-            self.memory[0] == 2,
-            self.memory[0] == 3,
-            self.memory[0] == 4,
-            self.memory[0] == 5,
             self.memory[0] > 0,
             self.memory[0] < 0,
-            self.memory[0] > 5
+            self.memory[0] > 5,
+            self.memory[0] > 15,
+            self.memory[0] > 25,
+            self.memory[0] > 35,
+            self.memory[0] > 45,
         ])
 
     def get_state(self):
@@ -119,9 +123,34 @@ class MockEnv(Environment):
     def get_obs_dimension(self):
         return len(self.get_observation())
 
+    def get_mask_over_args(self, program_index):
+        """
+        Return the available arguments which can be called by that given program
+        :param program_index: the program index
+        :return: a max over the available arguments
+        """
+
+        program = self.get_program_from_index(program_index)
+        permitted_arguments = self.programs_library[program]["args"]
+
+        mask = []
+        for k, r in self.arguments.items():
+            if k == permitted_arguments:
+                mask.append(np.ones(len(r)))
+            else:
+                mask.append(np.zeros(len(r)))
+
+        return np.concatenate(mask, axis=None)
+
+    def get_additional_parameters(self):
+        return {
+            "programs_types": self.programs_library,
+            "types": self.arguments
+        }
+
 if __name__ == "__main__":
 
-    env = MockEnv()
+    env = MockEnvMultipleArgs()
 
     env.init_env()
     print(env.memory)
