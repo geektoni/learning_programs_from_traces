@@ -10,14 +10,14 @@ class Trainer:
         self.num_updates_per_episode = num_updates_per_episode
         self.num_validation_episodes = num_validation_episodes
 
-        self.validation_mcts_class = mcts_validation_class
+        self.validation_mcts_class = import_dyn_class(mcts_validation_class)
 
     def perform_validation_step(self, env, task_index):
 
         validation_rewards = []
         for _ in range(self.num_validation_episodes):
 
-            mcts = import_dyn_class(self.validation_mcts_class)(env, self.policy, task_index)
+            mcts = self.validation_mcts_class(env, self.policy, task_index)
 
             # Sample an execution trace with mcts using policy as a prior
             trace = mcts.sample_execution_trace()
@@ -38,18 +38,9 @@ class Trainer:
             if t.task_reward < 0:
                 continue
 
-            observations = t.observations
-            prog_indices = t.programs_index
-            lstm_states = t.lstm_states
-            policy_labels = t.mcts_policies
-            rewards = t.rewards
-            program_args = t.program_arguments
-
             if t.clean_sub_execution:
-                # Generates trace
-                trace = list(zip(observations, prog_indices, lstm_states, policy_labels, rewards, program_args))
                 # Append trace to buffer
-                self.buffer.append_trace(trace)
+                self.buffer.append_trace(t.flatten())
             else:
                 # TODO: better logging
                 print("Trace has not been stored in buffer.")

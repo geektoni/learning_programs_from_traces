@@ -24,7 +24,6 @@ class PrioritizedReplayBuffer():
     def append_trace(self, trace):
         for tuple in trace:
             reward = 0 if tuple[4] <= 0.0 else 1
-            #if reward == 1:
             if len(self.stack) >= self.max_length:
                 t_id = self.stack[0][1]
                 r = 0 if self.stack[0][4] <= 0.0 else 1

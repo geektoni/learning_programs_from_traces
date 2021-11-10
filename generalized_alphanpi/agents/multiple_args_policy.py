@@ -154,8 +154,12 @@ class MultipleArgsPolicy(Module):
         e_t = torch.FloatTensor(np.stack(batch[0]))
         i_t = batch[1]
         lstm_states = batch[2]
+        lstm_states_args = batch[6]
         h_t, c_t = zip(*lstm_states)
         h_t, c_t = torch.squeeze(torch.stack(list(h_t))), torch.squeeze(torch.stack(list(c_t)))
+
+        h_t_args, c_t_args = zip(*lstm_states_args)
+        h_t_args, c_t_args = torch.squeeze(torch.stack(list(h_t_args))), torch.squeeze(torch.stack(list(c_t_args)))
 
         policy_labels = torch.squeeze(torch.stack(batch[3]))
         value_labels = torch.stack(batch[4]).view(-1, 1)
@@ -164,7 +168,7 @@ class MultipleArgsPolicy(Module):
         with BetterAnomalyDetection(check_autograd):
 
             self.optimizer.zero_grad()
-            policy_predictions, value_predictions, args_predictions, _, _, _, _ = self.predict_on_batch(e_t, i_t, h_t, c_t)
+            policy_predictions, value_predictions, args_predictions, _, _, _, _ = self.predict_on_batch(e_t, i_t, h_t, c_t, h_t_args, c_t_args)
 
             policy_loss = -torch.mean(
                 policy_labels[:, 0:self.num_programs] * torch.log(policy_predictions + self.epsilon), dim=-1

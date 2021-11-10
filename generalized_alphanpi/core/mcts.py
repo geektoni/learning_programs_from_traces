@@ -22,8 +22,13 @@ class ExecutionTrace(ABC):
         # Discard the first element (since it will have a None action)
         return result[1:]
 
-    def dict(self):
-        return {}
+    def flatten(self):
+        return list(zip(self.observations,
+                        self.programs_index,
+                        self.lstm_states,
+                        self.mcts_policies,
+                        self.rewards,
+                        self.program_arguments))
 
 class Node(ABC):
 

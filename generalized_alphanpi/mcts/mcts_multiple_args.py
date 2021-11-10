@@ -5,6 +5,23 @@ import torch
 import numpy as np
 import copy
 
+class ExecutionTraceArgs(ExecutionTrace):
+
+    def __init__(self, lstm_states, lstm_args_states, programs_index, observations, previous_actions, task_reward, program_arguments,
+                 rewards, mcts_policies,clean_sub_execution = True):
+        super().__init__(lstm_states, programs_index, observations, previous_actions, task_reward, program_arguments,
+                         rewards, mcts_policies, clean_sub_execution)
+        self.lstm_states_args = lstm_args_states
+
+    def flatten(self):
+        return list(zip(self.observations,
+                        self.programs_index,
+                        self.lstm_states,
+                        self.mcts_policies,
+                        self.rewards,
+                        self.program_arguments,
+                        self.lstm_states_args))
+
 class NodeArgs(Node):
 
     def __init__(self, *initial_data, **kwargs):
@@ -52,6 +69,7 @@ class MCTSMultipleArgs(MCTS):
                  ):
         super().__init__(environment, model, task_index, number_of_simulations, exploration, dir_epsilon, dir_noise,
                          level_closeness_coeff, level_0_penalty, qvalue_temperature, temperature, c_puct, gamma)
+        self.lstm_args_states = []
 
     def _expand_node(self, node):
 
@@ -238,6 +256,7 @@ class MCTSMultipleArgs(MCTS):
 
                 # record obs, progs and lstm states only if they correspond to the current task at hand
                 self.lstm_states.append((root_node.h_lstm, root_node.c_lstm))
+                self.lstm_args_states.append((root_node.h_lstm_args, root_node.c_lstm_args))
                 self.programs_index.append(root_node.program_index)
                 self.observations.append(root_node.observation)
                 self.previous_actions.append(root_node.program_from_parent_index)
@@ -380,7 +399,7 @@ class MCTSMultipleArgs(MCTS):
         self.env.end_task()
 
         # Generate execution trace
-        return ExecutionTrace(self.lstm_states, self.programs_index, self.observations, self.previous_actions, task_reward,
+        return ExecutionTraceArgs(self.lstm_states, self.lstm_args_states, self.programs_index, self.observations, self.previous_actions, task_reward,
                               self.program_arguments, self.rewards, self.mcts_policies, self.clean_sub_executions)
 
     def _estimate_q_val(self, node):
