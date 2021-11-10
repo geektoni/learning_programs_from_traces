@@ -11,6 +11,7 @@ class PrioritizedReplayBuffer():
         self.stack = []
         self.max_length = max_length
         self.p1 = p1
+        self.batch_length = 0
 
     def get_total_successful_traces(self):
         return sum([len(v[1]) for k, v in self.memory_task.items()])
@@ -23,6 +24,7 @@ class PrioritizedReplayBuffer():
 
     def append_trace(self, trace):
         for tuple in trace:
+            self.batch_length = len(tuple) # Set the global tuple length, it should be done only once...
             reward = 0 if tuple[4] <= 0.0 else 1
             if len(self.stack) >= self.max_length:
                 t_id = self.stack[0][1]
@@ -36,9 +38,9 @@ class PrioritizedReplayBuffer():
     def _sample_sub_batch(self, batch_size, memory):
         indices = np.arange(len(memory))
         sampled_indices = np.random.choice(indices, size=batch_size, replace=(batch_size > len(memory)))
-        batch = [[], [], [], [], [], []]
+        batch = [[] for _ in range(self.batch_length)]
         for i in sampled_indices:
-            for k in range(6):
+            for k in range(self.batch_length):
                 batch[k].append(memory[i][k])
         return batch
 
