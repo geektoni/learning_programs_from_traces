@@ -55,7 +55,7 @@ if __name__ == "__main__":
     if rank == 0:
 
         env = import_dyn_class(config.get("environment").get("name"))(
-            config.get("environment").get("configuration_parameters", {})
+            **config.get("environment").get("configuration_parameters", {})
         )
 
         num_programs = env.get_num_programs()
@@ -112,7 +112,7 @@ if __name__ == "__main__":
         if rank==0:
             task_index = scheduler.get_next_task_index()
             mcts = MCTS_CLASS(
-                env, policy, 1,
+                env, policy, task_index,
                 **config.get("training").get("mcts").get("configuration_parameters")
             )
 
