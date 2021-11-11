@@ -62,7 +62,7 @@ class MockEnvMultipleArgs(Environment):
             self.programs_library[key]['index'] = idx
 
         super().__init__(self.prog_to_func, self.prog_to_precondition, self.prog_to_postcondition,
-                         self.programs_library, self.arguments, self.max_depth_dict, self.complete_arguments)
+                         self.programs_library, self.arguments, self.max_depth_dict, complete_arguments=self.complete_arguments)
 
 
     def init_env(self):
@@ -89,16 +89,16 @@ class MockEnvMultipleArgs(Environment):
     def _sub(self, arguments=None):
         self.memory[0] -= arguments
 
-    def _stop_precondition(self):
+    def _stop_precondition(self, args):
         return True
 
-    def _add_precondition(self):
+    def _add_precondition(self, args):
         return True
 
-    def _sub_precondition(self):
+    def _sub_precondition(self, args):
         return self.memory[0] > 0
 
-    def _count_10_precondition(self):
+    def _count_10_precondition(self, args):
         return True
 
     def _count_10_postcondition(self, init_state, current_state):

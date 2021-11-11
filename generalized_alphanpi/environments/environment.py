@@ -159,6 +159,17 @@ class Environment(ABC):
                 mask[i] = 1
         return mask
 
+    def can_be_called(self, program_index, args_index):
+        program = self.get_program_from_index(program_index)
+        args = self.complete_arguments[args_index]
+
+        mask_over_args = self.get_mask_over_args(program_index)
+        if mask_over_args[args_index] == 0:
+            return False
+
+        return self.prog_to_precondition[program](args)
+
+
     def act(self, primary_action, arguments=None):
         assert self.has_been_reset, 'Need to reset the environment before acting'
         assert primary_action in self.primary_actions, 'action {} is not defined'.format(primary_action)

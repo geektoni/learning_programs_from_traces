@@ -85,19 +85,16 @@ class MCTSMultipleArgs(MCTS):
         )
 
         with torch.no_grad():
-            mask = self.env.get_mask_over_actions(self.task_index)
             priors, value, new_args, new_h, new_c, new_h_args, new_c_args = self.policy.forward_once(observation, program_index, h, c, h_args, c_args)
 
-            # mask actions
-            priors = priors * torch.FloatTensor(mask)
             priors = torch.squeeze(priors)
             priors = priors.cpu().numpy()
 
             if self.exploration:
                 priors = (1 - self.dir_epsilon) * priors + self.dir_epsilon * np.random.dirichlet([self.dir_noise] * priors.size)
 
-            policy_indexes = [prog_idx for prog_idx, x in enumerate(mask) if x == 1]
-            policy_probability = [priors[prog_idx] for prog_idx, x in enumerate(mask) if x == 1]
+            policy_indexes = [prog_idx for prog_idx, x in enumerate(priors)]
+            policy_probability = [priors[prog_idx] for prog_idx in policy_indexes]
 
             # Current new nodes
             new_nodes = []
@@ -105,25 +102,27 @@ class MCTSMultipleArgs(MCTS):
             # Initialize its children with its probability of being chosen
             for prog_index, prog_proba in zip(policy_indexes, policy_probability):
 
-                # mask arguments
+                # TODO: no support for recursive actions
+                if prog_index == program_index:
+                    continue
+
                 mask_args = self.env.get_mask_over_args(prog_index)
-                new_args_masked = new_args * torch.FloatTensor(mask_args)
-                new_args_masked = torch.squeeze(new_args_masked)
-                new_args_masked = new_args_masked.cpu().numpy()
+
+                masked_new_args = new_args * torch.FloatTensor(mask_args)
+                masked_new_args = torch.squeeze(masked_new_args)
+                masked_new_args = masked_new_args.cpu().numpy()
 
                 if self.exploration:
-                    new_args_masked = (1 - self.dir_epsilon) * new_args_masked \
-                                      + self.dir_epsilon * np.random.dirichlet([self.dir_noise] * new_args_masked.size)
+                    masked_new_args = (1 - self.dir_epsilon) * masked_new_args \
+                               + self.dir_epsilon * np.random.dirichlet([self.dir_noise] * masked_new_args.size)
 
-                args_probability = [new_args_masked[arg_idx] for arg_idx, y in enumerate(mask_args) if y == 1]
-                args_indexs = [arg_idx for arg_idx, y in enumerate(mask_args) if y == 1]
+                args_indexes = [arg_idx for arg_idx, y in enumerate(mask_args) if y == 1]
+                args_probability = [masked_new_args[arg_idx] for arg_idx in args_indexes]
 
-                #args_probability = fix_policy(torch.FloatTensor(args_probability)).numpy()
+                for arg_index, args_proba in zip(args_indexes, args_probability):
 
-                for arg_index, args_proba in zip(args_indexs, args_probability):
-
-                    # Check if the combination program/argument is admissable
-
+                    if not self.env.can_be_called(prog_index, arg_index):
+                        continue
 
                     new_child = NodeArgs({
                         "parent": node,
@@ -209,12 +208,14 @@ class MCTSMultipleArgs(MCTS):
                     # if never been done, compute new tree to execute program
                     if node.visit_count == 0.0:
 
+                        raise(RuntimeError("Not implemented yet!"))
+
                         sub_mcts_init_state = self.env.get_state()
 
                         # Copy sub_tree_params and increase node counts
                         copy_ = copy.deepcopy(self.sub_tree_params)
 
-                        sub_mcts = MCTSMultipleArgs(self.policy, self.env, program_to_call_index, **copy_)
+                        sub_mcts = MCTSMultipleArgs(self.env, self.policy, program_to_call_index, **copy_)
                         sub_trace = sub_mcts.sample_execution_trace().dict()
                         sub_task_reward, sub_root_node, sub_total_nodes, sub_selected_nodes = sub_trace[7], sub_trace[6], sub_trace[14], sub_trace[15]
 
