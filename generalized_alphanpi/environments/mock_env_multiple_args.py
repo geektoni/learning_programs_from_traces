@@ -62,7 +62,7 @@ class MockEnvMultipleArgs(Environment):
             self.programs_library[key]['index'] = idx
 
         super().__init__(self.prog_to_func, self.prog_to_precondition, self.prog_to_postcondition,
-                         self.programs_library, self.arguments, self.max_depth_dict)
+                         self.programs_library, self.arguments, self.max_depth_dict, self.complete_arguments)
 
 
     def init_env(self):

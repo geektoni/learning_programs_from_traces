@@ -4,7 +4,7 @@ import numpy as np
 
 class Environment(ABC):
 
-    def __init__(self, prog_to_func, prog_to_precondition, prog_to_postcondition, programs_library, arguments, max_depth_dict):
+    def __init__(self, prog_to_func, prog_to_precondition, prog_to_postcondition, programs_library, arguments, max_depth_dict, complete_arguments=None):
         self.prog_to_func = prog_to_func
         self.prog_to_precondition = prog_to_precondition
         self.prog_to_postcondition = prog_to_postcondition
@@ -28,6 +28,7 @@ class Environment(ABC):
         self.tasks_list = []
 
         self.arguments = arguments
+        self.complete_arguments = complete_arguments
 
         self.init_env()
 
