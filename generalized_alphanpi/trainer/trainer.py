@@ -18,7 +18,8 @@ class Trainer:
         validation_rewards = []
         for _ in range(self.num_validation_episodes):
 
-            mcts = self.validation_mcts_class(env, self.policy, task_index)
+            mcts = self.validation_mcts_class(env, self.policy, task_index, exploration=False,
+                                              number_of_simulations=5)
 
             # Sample an execution trace with mcts using policy as a prior
             trace, root_node = mcts.sample_execution_trace()
