@@ -1,4 +1,5 @@
 from generalized_alphanpi.utils import import_dyn_class
+from generalized_alphanpi.visualize.get_trace import MCTSvisualiser
 
 class Trainer:
 
@@ -20,7 +21,7 @@ class Trainer:
             mcts = self.validation_mcts_class(env, self.policy, task_index)
 
             # Sample an execution trace with mcts using policy as a prior
-            trace = mcts.sample_execution_trace()
+            trace, root_node = mcts.sample_execution_trace()
             task_reward = trace.task_reward
 
             validation_rewards.append(task_reward)

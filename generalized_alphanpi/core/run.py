@@ -120,7 +120,7 @@ if __name__ == "__main__":
 
             mcts = comm.bcast(mcts, root=0)
 
-            traces = mcts.sample_execution_trace()
+            traces, _ = mcts.sample_execution_trace()
 
             traces = comm.gather(traces, root=0)
 

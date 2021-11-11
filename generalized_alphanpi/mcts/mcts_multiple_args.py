@@ -352,7 +352,7 @@ class MCTSMultipleArgs(MCTS):
         return root_node, max_depth_reached, illegal_action, selected_nodes_count
 
 
-    def sample_execution_trace(self) -> ExecutionTrace:
+    def sample_execution_trace(self) -> [ExecutionTrace, NodeArgs]:
         """
         Sample an execution trace from the tree by running many simulations until
         we converge or we reach the max tree depth. The execution trace is stored in
@@ -400,7 +400,7 @@ class MCTSMultipleArgs(MCTS):
 
         # Generate execution trace
         return ExecutionTraceArgs(self.lstm_states, self.lstm_args_states, self.programs_index, self.observations, self.previous_actions, task_reward,
-                              self.program_arguments, self.rewards, self.mcts_policies, self.clean_sub_executions)
+                              self.program_arguments, self.rewards, self.mcts_policies, self.clean_sub_executions), self.root_node
 
     def _estimate_q_val(self, node):
 

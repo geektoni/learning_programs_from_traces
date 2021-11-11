@@ -174,3 +174,6 @@ class Environment(ABC):
     @abstractmethod
     def get_additional_parameters(self):
         return {}
+
+    def get_state_str(self, state):
+        return ""
