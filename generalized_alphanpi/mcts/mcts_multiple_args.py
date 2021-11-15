@@ -65,7 +65,7 @@ class MCTSMultipleArgs(MCTS):
     def __init__(self, environment, model, task_index: int, number_of_simulations: int =100, exploration=True,
                  dir_epsilon: float=0.03, dir_noise: float=0.3,
                  level_closeness_coeff: float = 3.0, level_0_penalty: float = 1, qvalue_temperature: float = 1.0,
-                 temperature: float = 1.3, c_puct: float = 0.5, gamma: float = 0.97, action_cost_coeff: float = 3.0
+                 temperature: float = 1.3, c_puct: float = 0.5, gamma: float = 0.97, action_cost_coeff: float = 1.0
                  ):
         super().__init__(environment, model, task_index, number_of_simulations, exploration, dir_epsilon, dir_noise,
                          level_closeness_coeff, level_0_penalty, qvalue_temperature, temperature, c_puct, gamma, action_cost_coeff)
