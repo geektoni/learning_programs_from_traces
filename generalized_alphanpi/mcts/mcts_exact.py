@@ -199,7 +199,7 @@ class MCTSExact(MCTS):
                 # record obs, progs and lstm states only if they correspond to the current task at hand
                 self.lstm_states.append((root_node.h_lstm, root_node.c_lstm))
                 self.programs_index.append(root_node.program_index)
-                self.observations.append(root_node.observation)
+                self.observations.append(root_node.observation.clone())
                 self.previous_actions.append(root_node.program_from_parent_index)
                 self.program_arguments.append(root_node.args)
                 self.rewards.append(None)

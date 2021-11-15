@@ -4,7 +4,7 @@ import numpy as np
 
 class Environment(ABC):
 
-    def __init__(self, prog_to_func, prog_to_precondition, prog_to_postcondition, programs_library, arguments, max_depth_dict, complete_arguments=None):
+    def __init__(self, prog_to_func, prog_to_precondition, prog_to_postcondition, programs_library, arguments, max_depth_dict, prog_to_cost=None, complete_arguments=None):
         self.prog_to_func = prog_to_func
         self.prog_to_precondition = prog_to_precondition
         self.prog_to_postcondition = prog_to_postcondition
@@ -29,6 +29,8 @@ class Environment(ABC):
 
         self.arguments = arguments
         self.complete_arguments = complete_arguments
+
+        self.prog_to_cost = prog_to_cost
 
         self.init_env()
 
@@ -168,6 +170,16 @@ class Environment(ABC):
             return False
 
         return self.prog_to_precondition[program](args)
+
+    def get_cost(self, program_index, args_index):
+
+        if self.prog_to_cost is None:
+            return 0
+
+        program = self.get_program_from_index(program_index)
+        args = self.complete_arguments[args_index]
+
+        return self.prog_to_cost[program](args)
 
 
     def act(self, primary_action, arguments=None):

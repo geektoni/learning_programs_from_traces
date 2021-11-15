@@ -56,6 +56,7 @@ if __name__ == "__main__":
         env, policy, idx,
         **config.get("training").get("mcts").get("configuration_parameters")
     )
+    mcts.exploration = False
 
     max_tries = 50
     for _ in range(0, max_tries):

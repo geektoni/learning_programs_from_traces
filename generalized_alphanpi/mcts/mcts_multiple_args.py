@@ -39,8 +39,8 @@ class NodeArgs(Node):
             "prior": None,
             "program_index": task_index,
             "program_from_parent_index": None,
-            "observation": init_observation,
-            "env_state": env_state,
+            "observation": init_observation.clone(),
+            "env_state": env_state.copy(),
             "h_lstm": h.clone(),
             "c_lstm": c.clone(),
             "h_lstm_args": h_args.clone(),
@@ -65,10 +65,10 @@ class MCTSMultipleArgs(MCTS):
     def __init__(self, environment, model, task_index: int, number_of_simulations: int =100, exploration=True,
                  dir_epsilon: float=0.03, dir_noise: float=0.3,
                  level_closeness_coeff: float = 3.0, level_0_penalty: float = 1, qvalue_temperature: float = 1.0,
-                 temperature: float = 1.3, c_puct: float = 0.5, gamma: float = 0.97
+                 temperature: float = 1.3, c_puct: float = 0.5, gamma: float = 0.97, action_cost_coeff: float = 3.0
                  ):
         super().__init__(environment, model, task_index, number_of_simulations, exploration, dir_epsilon, dir_noise,
-                         level_closeness_coeff, level_0_penalty, qvalue_temperature, temperature, c_puct, gamma)
+                         level_closeness_coeff, level_0_penalty, qvalue_temperature, temperature, c_puct, gamma, action_cost_coeff)
         self.lstm_args_states = []
 
     def _expand_node(self, node):
@@ -132,7 +132,7 @@ class MCTSMultipleArgs(MCTS):
                         "prior": float(prog_proba * args_proba),
                         "program_from_parent_index": prog_index,
                         "program_index": program_index,
-                        "observation": observation,
+                        "observation": observation.clone(),
                         "env_state": env_state.copy(),
                         "h_lstm": new_h.clone(),
                         "c_lstm": new_c.clone(),
@@ -198,7 +198,7 @@ class MCTSMultipleArgs(MCTS):
 
                 elif self.env.get_program_level(program_to_call) == 0:
                     observation = self.env.act(program_to_call, arguments)
-                    node.observation = observation
+                    node.observation = observation.clone()
                     node.env_state = self.env.get_state().copy()
 
                 else:
@@ -232,7 +232,7 @@ class MCTSMultipleArgs(MCTS):
                         self.env.reset_to_state(node.env_state.copy())
                         observation = self.env.get_observation()
 
-                    node.observation = observation
+                    node.observation = observation.clone()
                     node.env_state = self.env.get_state().copy()
 
         return max_depth_reached, has_expanded_a_node, node, value, failed_simulation
@@ -262,7 +262,7 @@ class MCTSMultipleArgs(MCTS):
                 self.lstm_states.append((root_node.h_lstm, root_node.c_lstm))
                 self.lstm_args_states.append((root_node.h_lstm_args, root_node.c_lstm_args))
                 self.programs_index.append(root_node.program_index)
-                self.observations.append(root_node.observation)
+                self.observations.append(root_node.observation.clone())
                 self.previous_actions.append(root_node.program_from_parent_index)
                 self.program_arguments.append(root_node.args)
                 self.rewards.append(None)
@@ -434,6 +434,8 @@ class MCTSMultipleArgs(MCTS):
                     action_level_closeness = self.level_closeness_coeff * np.exp(-1)
 
                 q_val_action += action_level_closeness
+
+                q_val_action += self.action_cost_coeff * np.exp(-self.env.get_cost(child.program_from_parent_index, child.args_index))
 
                 if q_val_action > best_val:
                     best_val = q_val_action
