@@ -4,7 +4,8 @@ import numpy as np
 
 class Environment(ABC):
 
-    def __init__(self, prog_to_func, prog_to_precondition, prog_to_postcondition, programs_library, arguments, max_depth_dict, prog_to_cost=None, complete_arguments=None):
+    def __init__(self, prog_to_func, prog_to_precondition, prog_to_postcondition, programs_library, arguments,
+                 max_depth_dict, prog_to_cost=None, complete_arguments=None, sample_from_errors_prob=0.3):
         self.prog_to_func = prog_to_func
         self.prog_to_precondition = prog_to_precondition
         self.prog_to_postcondition = prog_to_postcondition
@@ -31,6 +32,13 @@ class Environment(ABC):
         self.complete_arguments = complete_arguments
 
         self.prog_to_cost = prog_to_cost
+
+        self.failed_execution_envs = {
+            k: [] for k in self.programs_library
+        }
+        self.max_failed_envs = 200
+        self.sample_from_errors_prob = sample_from_errors_prob
+        self.validation = False
 
         self.init_env()
 
@@ -201,3 +209,63 @@ class Environment(ABC):
 
     def get_state_str(self, state):
         return ""
+
+    @abstractmethod
+    def compare_state(self, state_a, state_b):
+        pass
+
+    def update_failing_envs(self, state, program):
+        """
+        Update failing env count
+        :param env: current failed env
+        :param program: current failed program
+        :return:
+        """
+
+        # If we are validating, do not update the failed states
+        if self.validation:
+            return
+
+        if self.failed_execution_envs is None:
+            raise Exception("The failed envs are None! Error sampling is not implemented")
+
+        # Do not update if we are running in validation mode
+        if len(self.failed_execution_envs[program]) == 0:
+            self.failed_execution_envs[program].append((state, 1, 1000))
+        else:
+            found = False
+            for i in range(len(self.failed_execution_envs[program])):
+                if self.compare_state(state, self.failed_execution_envs[program][i][0]):
+                    self.failed_execution_envs[program][i] = (
+                    self.failed_execution_envs[program][i][0], self.failed_execution_envs[program][i][1] + 1,
+                    self.failed_execution_envs[program][i][2] + 1)
+                    found = True
+                    break
+                else:
+                    self.failed_execution_envs[program][i] = (
+                    self.failed_execution_envs[program][i][0], self.failed_execution_envs[program][i][1],
+                    self.failed_execution_envs[program][i][2] - 1)
+            if not found:
+                # Remove the failed program with the least life from the list to make space for the new one
+                if len(self.failed_execution_envs[program]) >= self.max_failed_envs:
+                    self.failed_execution_envs[program].sort(key=lambda t: t[2])
+                    del self.failed_execution_envs[program][0]
+                self.failed_execution_envs[program].append((state, 1, 1000))
+
+    def sample_from_failed_state(self, program):
+        """
+        Return the dictionary where to sample from.
+        :param program: program we are resetting
+        :return: the dictionary
+        """
+        result = None
+        if np.random.random_sample() < self.sample_from_errors_prob \
+                and len(self.failed_execution_envs[program]) > 0 \
+                and not self.validation:
+            env = self.failed_execution_envs
+            total_errors = sum([x[1] for x in env[program]])
+            sampling_prob = [x[1]/total_errors for x in env[program]]
+            index = np.random.choice(len(env[program]), p=sampling_prob)
+            result = env[program][index][0]
+
+        return result

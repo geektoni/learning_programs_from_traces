@@ -391,9 +391,7 @@ class MCTSMultipleArgs(MCTS):
         if reward > 0 and not illegal_action and not max_depth_reached:
             task_reward = reward * (self.gamma ** final_node.depth)
         else:
-            # TODO: add logic to save failed states for retraining
-            #self.programs_failed_states_indices[self.task_index].append((env_index, env_total_size))
-            #self.env.update_failing_envs(self.env_init_state, self.env.get_program_from_index(self.task_index))
+            self.env.update_failing_envs(env_init_state.copy(), self.env.get_program_from_index(self.task_index))
             task_reward = -1
 
         # Replace None rewards by the true final task reward

@@ -139,14 +139,22 @@ if __name__ == "__main__":
 
             for idx in scheduler.get_tasks_of_maximum_level():
                 task_level = env.get_program_level_from_index(idx)
+
+                # Enable validation mode (no sampling from failed states, just random)
+                env.validation = True
+
                 mcts = MCTS_CLASS(
                     env, policy, idx,
-                    config.get("environment").get("configuration_parameters", {})
+                    **config.get("training").get("mcts").get("configuration_parameters")
                 )
 
                 validation_rewards = trainer.perform_validation_step(env, idx)
                 scheduler.update_statistics(idx, validation_rewards)
                 scheduler.print_statistics()
+
+                # Disable validation mode (no sampling from failed states, just random)
+                env.validation = False
+
                 print('')
                 print('')
 
