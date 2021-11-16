@@ -121,6 +121,9 @@ class MCTSMultipleArgs(MCTS):
 
                 for arg_index, args_proba in zip(args_indexes, args_probability):
 
+                    if self.env.can_be_called(prog_index, arg_index) is None:
+                        raise ValueError(f"A precondition for program {self.env.get_program_from_index(prog_index)} is not defined!")
+
                     if not self.env.can_be_called(prog_index, arg_index):
                         continue
 
