@@ -54,3 +54,11 @@ policy:
   hidden_size: 50
   embedding_dim: 100
   encoding_dim: 20 # This needs to be equal to the encoder embedding_dim
+
+validation:
+  iterations: 100
+  environment:
+    configuration_parameters:
+      data: "data/test.csv"
+  save_results: "ignore"
+  save_results_name: "results"
