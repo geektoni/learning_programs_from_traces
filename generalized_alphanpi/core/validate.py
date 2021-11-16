@@ -63,6 +63,7 @@ if __name__ == "__main__":
         **config.get("training").get("mcts").get("configuration_parameters")
     )
     mcts.exploration = False
+    mcts.number_of_simulations = 5
     mcts.validation = True
 
     mcts_rewards_normalized = []
@@ -94,11 +95,11 @@ if __name__ == "__main__":
     mcts_rewards_std = np.std(np.array(mcts_rewards_normalized))
 
 
-    results_file.write("mcts_reward_mean,mcts_reward_normalized_mean,mcts_rewards_std,mcts_rewards_normalized_std")
+    results_file.write("mcts_reward_mean,mcts_reward_normalized_mean,mcts_rewards_std,mcts_rewards_normalized_std\n")
 
     complete = f"{mcts_rewards_mean},{mcts_rewards_normalized_mean},{mcts_rewards_std},{mcts_rewards_normalized_std}"
 
     print(complete)
 
-    results_file.write(complete + ' \n')
+    results_file.write(complete + '\n')
     results_file.close()
