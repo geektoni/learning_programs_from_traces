@@ -55,7 +55,7 @@ class Environment(ABC):
 
         if len(self.tasks_dict.keys()) == 0:
             # reset env
-            state_index, total_size = self.reset_env()
+            state_index, total_size = self.reset_env(task_index)
 
         # store init state
         init_state = self.get_state()
@@ -72,7 +72,7 @@ class Environment(ABC):
         pass
 
     @abstractmethod
-    def reset_env(self):
+    def reset_env(self, task_index):
         pass
 
     @abstractmethod

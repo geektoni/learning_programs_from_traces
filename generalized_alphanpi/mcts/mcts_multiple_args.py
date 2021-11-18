@@ -211,24 +211,17 @@ class MCTSMultipleArgs(MCTS):
                     # if never been done, compute new tree to execute program
                     if node.visit_count == 0.0:
 
-                        raise(RuntimeError("Not implemented yet!"))
-
-                        sub_mcts_init_state = self.env.get_state()
-
-                        # Copy sub_tree_params and increase node counts
-                        copy_ = copy.deepcopy(self.sub_tree_params)
-
-                        sub_mcts = MCTSMultipleArgs(self.env, self.policy, program_to_call_index, **copy_)
-                        sub_trace = sub_mcts.sample_execution_trace().dict()
-                        sub_task_reward, sub_root_node, sub_total_nodes, sub_selected_nodes = sub_trace[7], sub_trace[6], sub_trace[14], sub_trace[15]
+                        self.env.validation = True
+                        sub_mcts = MCTSMultipleArgs(self.env, self.policy, program_to_call_index,
+                                                    exploration=False, number_of_simulations=5)
+                        self.env.validation = False
+                        sub_trace, root_node = sub_mcts.sample_execution_trace()
+                        sub_task_reward, sub_root_node = sub_trace.rewards, root_node
 
                         # check that sub tree executed correctly
                         self.clean_sub_executions &= (sub_task_reward > -1.0)
                         if not self.clean_sub_executions:
-                            # TODO: add better logging
-                            # print('program {} did not execute correctly'.format(program_to_call))
-                            self.programs_failed_indices.append(program_to_call_index)
-                            self.programs_failed_initstates.append(sub_mcts_init_state)
+                            print('program {} did not execute correctly'.format(program_to_call))
 
                         observation = self.env.get_observation()
                     else:

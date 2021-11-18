@@ -64,7 +64,7 @@ if __name__ == "__main__":
     )
     mcts.exploration = False
     mcts.number_of_simulations = 5
-    mcts.validation = True
+    mcts.env.validation = True
 
     mcts_rewards_normalized = []
     mcts_rewards = []

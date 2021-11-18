@@ -57,7 +57,7 @@ if __name__ == "__main__":
         **config.get("training").get("mcts").get("configuration_parameters")
     )
     mcts.exploration = False
-    mcts.validation = True
+    mcts.env.validation = True
 
     max_tries = 50
     for _ in range(0, max_tries):
