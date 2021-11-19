@@ -11,6 +11,9 @@ if __name__ == "__main__":
     parser.add_argument("model", type=str, help="Path to the model we want to visualize.")
     parser.add_argument("task", type=str, help="Task we want to execute")
     parser.add_argument("--config", type=str, help="Path to the file with the experiment configuration")
+    parser.add_argument("--failure", action="store_true", default=False, help="Visualize an example of a failed track")
+    parser.add_argument("--max-tries", type=int, default=50, help="How many example to try")
+
 
     args = parser.parse_args()
     config = yaml.load(open(args.config),Loader=yaml.FullLoader)
@@ -59,12 +62,12 @@ if __name__ == "__main__":
     mcts.exploration = False
     mcts.env.validation = True
 
-    max_tries = 50
-    for _ in range(0, max_tries):
+    for _ in range(0, args.max_tries):
 
         trace, root_node = mcts.sample_execution_trace()
+        print()
 
-        if trace.rewards[0] > 0:
+        if (trace.rewards[0] > 0 and not args.failure) or (args.failure and trace.rewards[0] < 0):
             visualiser = MCTSvisualiser(env=env)
             visualiser.print_mcts(root_node=root_node, file_path='mcts.gv')
             break

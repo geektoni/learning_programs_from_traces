@@ -28,7 +28,7 @@ class MCTSvisualiser:
         self.file.close()
 
 
-    def _get_label_attr(self, list_args, font_size=10):
+    def _get_label_attr(self, list_args, font_size=12):
         '''
         Convert a list of string arguments into the string understandable by graphviz.
         Args:
@@ -113,7 +113,7 @@ class MCTSvisualiser:
         self._print_footing()
 
 
-    def _print_node(self, node_idx, list_args, font_size=10):
+    def _print_node(self, node_idx, list_args, font_size=12):
         self.file.write(self.indent + str(int(node_idx)) + ' ' + self._get_label_attr(list_args, font_size, ) + '\n')
 
     def _print_mcts_node(self, node):
@@ -128,9 +128,9 @@ class MCTSvisualiser:
 
 
         list_args=['prog : {}'.format(self.env.get_program_from_index(node.program_index)),
-                   'env state: {}'.format(self.env.get_state_str(node.env_state)),
-                   'prior : {},  qvalue : {}'.format(prior, qvalue),
-                   'depth : {}'.format(node.depth)]
+                   'env state: {}'.format(self.env.get_state_str(node.env_state))]
+                   #'prior : {},  qvalue : {}'.format(prior, qvalue),
+                   #'depth : {}'.format(node.depth)]
 
         self._print_node(node.index, list_args)
 
@@ -146,7 +146,7 @@ class MCTSvisualiser:
         self.file.write(self.indent + res + '\n')
 
 
-    def _print_edge(self, node1_idx, node2_idx, label='', color=None, font_size=10):
+    def _print_edge(self, node1_idx, node2_idx, label='', color=None, font_size=12):
         res = '{} -> {} '.format(str(int(node1_idx)), str(int(node2_idx)))
         res += '[ '
         if color is not None:
