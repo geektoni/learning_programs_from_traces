@@ -405,6 +405,11 @@ class MCTSMultipleArgs(MCTS):
         best_child = None
         best_val = -np.inf
 
+        # TODO: improve the computation of the same action penalty such to memorize
+        # this information inside the nodes, rather tan computing it everytime.
+        repeated_actions = self._estimate_penalty_same_action(node)
+        repeated_actions_penalty = np.sum([v for k, v in repeated_actions.items()])
+
         for child in node.childs:
             if child.prior > 0.0:
                 q_val_action = compute_q_value(child, self.qvalue_temperature)
@@ -431,11 +436,34 @@ class MCTSMultipleArgs(MCTS):
 
                 q_val_action += self.action_cost_coeff * np.exp(-self.env.get_cost(child.program_from_parent_index, child.args_index))
 
+                if (child.program_from_parent_index, child.args_index) in repeated_actions:
+                    q_val_action += self.action_cost_coeff * np.exp(-(repeated_actions_penalty+1))
+                else:
+                    q_val_action += self.action_cost_coeff * np.exp(-repeated_actions_penalty)
+
                 if q_val_action > best_val:
                     best_val = q_val_action
                     best_child = child
 
         return best_child
+
+    def _estimate_penalty_same_action(self, node):
+
+        current_actions = {}
+        while node.parent is not None:
+
+            program_to_call_index = node.program_from_parent_index
+            arguments = node.args_index
+
+            if (program_to_call_index, arguments) in current_actions:
+                current_actions[(program_to_call_index, arguments)] += 1
+            else:
+                current_actions[(program_to_call_index, arguments)] = 0
+
+            node = node.parent
+
+        return current_actions
+
 
     def _sample_policy(self, root_node):
         """Sample an action from the policies and q_value distributions that were previously sampled.
