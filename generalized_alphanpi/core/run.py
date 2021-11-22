@@ -135,6 +135,8 @@ if __name__ == "__main__":
 
             if not args.single_core:
                 traces = comm.gather(traces, root=0)
+            else:
+                traces = [traces]
 
             if rank == 0:
 
