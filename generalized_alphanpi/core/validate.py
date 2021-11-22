@@ -87,6 +87,8 @@ if __name__ == "__main__":
             mcts_rewards.append(trace.rewards[0].item())
             mcts_rewards_normalized.append(1.0)
         else:
+            mcts_rewards.append(0.0)
+            mcts_rewards_normalized.append(0.0)
             failures += 1
 
     mcts_rewards_normalized_mean = np.mean(np.array(mcts_rewards_normalized))
@@ -99,7 +101,8 @@ if __name__ == "__main__":
 
     complete = f"{mcts_rewards_mean},{mcts_rewards_normalized_mean},{mcts_rewards_std},{mcts_rewards_normalized_std}"
 
-    print(complete)
+    print("Complete:", complete)
+    print("Failures:", failures)
 
     results_file.write(complete + '\n')
     results_file.close()
