@@ -222,10 +222,6 @@ class Environment(ABC):
         :return:
         """
 
-        # If we are validating, do not update the failed states
-        if self.validation:
-            return
-
         if self.failed_execution_envs is None:
             raise Exception("The failed envs are None! Error sampling is not implemented")
 
@@ -266,6 +262,6 @@ class Environment(ABC):
             total_errors = sum([x[1] for x in env[program]])
             sampling_prob = [x[1]/total_errors for x in env[program]]
             index = np.random.choice(len(env[program]), p=sampling_prob)
-            result = env[program][index][0]
+            result = env[program][index][0].copy()
 
         return result

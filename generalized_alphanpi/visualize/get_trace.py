@@ -126,9 +126,11 @@ class MCTSvisualiser:
         qvalue = float(torch.dot(softmax, values))
         qvalue = '%.2f'%(qvalue)
 
+        state, result = self.env.get_state_str(node.env_state)
 
         list_args=['prog : {}'.format(self.env.get_program_from_index(node.program_index)),
-                   'env state: {}'.format(self.env.get_state_str(node.env_state))]
+                   'env state: {}'.format(state),
+                   'outcome: {}'.format(result)]
                    #'prior : {},  qvalue : {}'.format(prior, qvalue),
                    #'depth : {}'.format(node.depth)]
 
