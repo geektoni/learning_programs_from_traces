@@ -18,15 +18,21 @@ if __name__ == "__main__":
 
     parser = ArgumentParser()
     parser.add_argument("--config", type=str, help="Path to the file with the experiment configuration")
+    parser.add_argument("--single-core", default=False, action="store_true", help="Run everything with a single core.")
 
     args = parser.parse_args()
     config = yaml.load(open(args.config),Loader=yaml.FullLoader)
 
-    from mpi4py import MPI
+    if not args.single_core:
 
-    comm = MPI.COMM_WORLD
-    rank = comm.Get_rank()
-    size = comm.Get_size()
+        from mpi4py import MPI
+
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+        size = comm.Get_size()
+    else:
+        rank = 0
+        comm = None
 
     task_index = None
     policy = None
@@ -122,11 +128,13 @@ if __name__ == "__main__":
 
         for episode in range(config.get("training").get("num_episodes_per_iteration")):
 
-            mcts = comm.bcast(mcts, root=0)
+            if not args.single_core:
+                mcts = comm.bcast(mcts, root=0)
 
             traces, _ = mcts.sample_execution_trace()
 
-            traces = comm.gather(traces, root=0)
+            if not args.single_core:
+                traces = comm.gather(traces, root=0)
 
             if rank == 0:
 
