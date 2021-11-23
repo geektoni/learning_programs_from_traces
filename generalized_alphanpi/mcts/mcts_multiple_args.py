@@ -482,21 +482,36 @@ class MCTSMultipleArgs(MCTS):
             mcts_policy[0, prog_index] += visit
             args_policy[0, arg_index] += visit
 
-        mcts_policy = torch.pow(mcts_policy, self.temperature)
-        mcts_policy = mcts_policy / mcts_policy.sum()
+        if not self.exploration:
 
-        if mcts_policy.sum() == 0.0:
-            mcts_policy = torch.ones(1, self.env.get_num_programs()) / self.env.get_num_programs()
+            mcts_policy = mcts_policy / mcts_policy.sum()
+            if mcts_policy.sum() == 0.0:
+                mcts_policy = torch.ones(1, self.env.get_num_programs()) / self.env.get_num_programs()
 
-        args_policy = torch.pow(args_policy, self.temperature)
-        args_policy = args_policy / args_policy.sum()
+            args_policy = args_policy / args_policy.sum()
+            if args_policy.sum() == 0.0:
+                args_policy = torch.ones(1, len(self.env.arguments)) / len(self.env.arguments)
 
-        if args_policy.sum() == 0.0:
-            args_policy = torch.ones(1, len(self.env.arguments)) / len(self.env.arguments)
+            args_sampled = int(torch.argmax(args_policy))
+            prog_sampled = int(torch.argmax(mcts_policy))
 
-        args_sampled = int(torch.multinomial(args_policy, 1)[0, 0])
+        else:
+            mcts_policy = torch.pow(mcts_policy, self.temperature)
+            mcts_policy = mcts_policy / mcts_policy.sum()
 
-        return mcts_policy, args_policy, int(torch.multinomial(mcts_policy, 1)[0, 0]), args_sampled
+            if mcts_policy.sum() == 0.0:
+                mcts_policy = torch.ones(1, self.env.get_num_programs()) / self.env.get_num_programs()
+
+            args_policy = torch.pow(args_policy, self.temperature)
+            args_policy = args_policy / args_policy.sum()
+
+            if args_policy.sum() == 0.0:
+                args_policy = torch.ones(1, len(self.env.arguments)) / len(self.env.arguments)
+
+            args_sampled = int(torch.multinomial(args_policy, 1)[0, 0])
+            prog_sampled = int(torch.multinomial(mcts_policy, 1)[0, 0])
+
+        return mcts_policy, args_policy, prog_sampled, args_sampled
 
     def print_correct_execution(self, node):
         while node.parent is not None:
