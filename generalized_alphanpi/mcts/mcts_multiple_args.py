@@ -328,8 +328,6 @@ class MCTSMultipleArgs(MCTS):
                                  if child.program_from_parent_index == program_to_call_index
                                  and child.args_index == args_to_call_index]
 
-                #print(mcts_policy, program_to_call_index, self.env.programs_library["STOP"]['index'], [child.program_from_parent_index for child in root_node.childs])
-
                 # If we choose an illegal action from this point, we exit
                 if len(root_node) == 0:
                     root_node = None
@@ -507,3 +505,8 @@ class MCTSMultipleArgs(MCTS):
 
             node = node.parent
         print("")
+
+    def empty_previous_trace(self):
+        self.lstm_args_states = []
+        super().empty_previous_trace()
+
