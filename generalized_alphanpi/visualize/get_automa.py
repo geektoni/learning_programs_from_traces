@@ -4,7 +4,13 @@ from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
 
 import seaborn as sns
+sns.set_context("paper")
 import matplotlib.pyplot as plt
+
+from matplotlib import rcParams
+
+# figure size in inches
+rcParams['figure.figsize'] = 12,6
 
 class VisualizeAutoma:
 
@@ -14,6 +20,7 @@ class VisualizeAutoma:
         self.real_program_counts = []
         self.points = []
         self.operations = []
+        self.args = []
         self.operation = operation
         self.seed = 2021
 
@@ -72,6 +79,11 @@ class VisualizeAutoma:
                 self.operations.append(
                     self.env.get_program_from_index(node.program_from_parent_index)
                 )
+
+            self.args.append(
+                node.args
+            )
+
             self.points.append(
                 (node.h_lstm.flatten()+node.h_lstm_args.flatten()).numpy()
                 #encoder(torch.FloatTensor(node.observation)).numpy()
@@ -102,28 +114,43 @@ class VisualizeAutoma:
 
         arrows = set()
 
+        plot_path = True
+
         for p in range(0, len(self.reduced_points)-1):
 
-            ops = (self.operations[p], self.operations[p+1])
+            ops = (f"{self.operations[p]}({self.args[p]})", f"{self.operations[p+1]}({self.args[p+1]})")
             if ops in arrows:
                 continue
             else:
                 arrows.add(ops)
 
-            begin = op_centroids.get(ops[0])
-            end = op_centroids.get(ops[1])
+            begin = op_centroids.get(self.operations[p])
+            end = op_centroids.get(self.operations[p+1])
 
             if self.real_program_counts[p] < self.real_program_counts[p+1]:
-                fig.arrow(begin[0], begin[1],
+                if plot_path:
+                    fig.arrow(begin[0], begin[1],
                           end[0]-begin[0],
                           end[1]-begin[1],
-                          head_width=2, length_includes_head=True)
+                          head_width=1, length_includes_head=True, width=0.09, color="r")
+                    fig.text(begin[0]+(end[0]-begin[0])/2, begin[1]+(end[1]-begin[1])/2, ops[0])
+                else:
+                    fig.arrow(begin[0], begin[1],
+                              end[0] - begin[0],
+                              end[1] - begin[1],
+                              head_width=1, length_includes_head=True)
+            else:
+                plot_path = False
 
-
-    def plot(self):
+    def plot(self, save=False):
         print("[*] Plot values")
         print(self.real_program, self.real_program_counts)
         print(self.reduced_points)
         fig = sns.scatterplot(x="x", y="y", hue="operations", data=self.reduced_points)
         self._plot_lines(fig)
-        plt.show()
+
+        if save:
+            plt.tight_layout()
+            plt.savefig("output_automa.png", dpi=400)
+        else:
+            plt.show()
