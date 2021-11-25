@@ -14,7 +14,7 @@ rcParams['figure.figsize'] = 12,6
 
 class VisualizeAutoma:
 
-    def __init__(self, env, operation="INTERVENE", seed=2021):
+    def __init__(self, env, operation="INTERVENE", seed=2021, draw_arrows=False):
         self.env = env
         self.real_program = []
         self.real_program_counts = []
@@ -22,7 +22,8 @@ class VisualizeAutoma:
         self.operations = []
         self.args = []
         self.operation = operation
-        self.seed = 2021
+        self.seed = seed
+        self.draw_arrows = draw_arrows
 
     def get_breadth_first_nodes(self, root_node):
         '''
@@ -85,7 +86,7 @@ class VisualizeAutoma:
             )
 
             self.points.append(
-                (node.h_lstm.flatten()+node.h_lstm_args.flatten()).numpy()
+                (node.h_lstm.flatten()).numpy()
                 #encoder(torch.FloatTensor(node.observation)).numpy()
             )
 
@@ -144,10 +145,10 @@ class VisualizeAutoma:
 
     def plot(self, save=False):
         print("[*] Plot values")
-        print(self.real_program, self.real_program_counts)
-        print(self.reduced_points)
         fig = sns.scatterplot(x="x", y="y", hue="operations", data=self.reduced_points)
-        self._plot_lines(fig)
+
+        if self.draw_arrows:
+            self._plot_lines(fig)
 
         if save:
             plt.tight_layout()
