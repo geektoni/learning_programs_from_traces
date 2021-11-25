@@ -1,5 +1,5 @@
 from generalized_alphanpi.utils import import_dyn_class
-from generalized_alphanpi.visualize.get_automa import VisualizeAutoma
+from generalized_alphanpi.visualize.get_automa import VisualizeAutoma, ComputeAutoma
 
 from argparse import ArgumentParser
 import torch

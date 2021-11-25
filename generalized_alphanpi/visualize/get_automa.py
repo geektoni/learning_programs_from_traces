@@ -3,6 +3,8 @@ import pandas as pd
 from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
 
+import numpy as np
+
 import seaborn as sns
 sns.set_context("paper")
 import matplotlib.pyplot as plt
@@ -18,12 +20,15 @@ class VisualizeAutoma:
         self.env = env
         self.real_program = []
         self.real_program_counts = []
+        self.observations = []
         self.points = []
         self.operations = []
         self.args = []
         self.operation = operation
         self.seed = seed
         self.draw_arrows = draw_arrows
+
+        self.graph = {}
 
     def get_breadth_first_nodes(self, root_node):
         '''
@@ -85,10 +90,29 @@ class VisualizeAutoma:
                 node.args
             )
 
+            self.observations.append(
+                node.observation.numpy()
+            )
+
             self.points.append(
                 (node.h_lstm.flatten()).numpy()
                 #encoder(torch.FloatTensor(node.observation)).numpy()
             )
+
+    def _compute_min_distance(self, point, centroids):
+
+        min_distance = np.inf
+        found_centroid = None
+
+        for k, v in centroids.items():
+
+            tmp = np.linalg.norm(np.array(v) - np.array(point))
+            if tmp < min_distance:
+                min_distance = tmp
+                found_centroid = k
+
+        return found_centroid
+
 
     def compute(self):
         print("[*] Executing TSNE")
@@ -99,9 +123,47 @@ class VisualizeAutoma:
                                    n_jobs=-1,
                                    random_state=self.seed,
                                    ).fit_transform(self.points)
-        #self.reduced_points = PCA(n_components=2).fit_transform(self.points)
+
         self.reduced_points = pd.DataFrame(self.reduced_points, columns=["x", "y"])
         self.reduced_points["operations"] = self.operations
+
+        operation_centroids = {}
+
+        for op in self.reduced_points["operations"].unique():
+            x = self.reduced_points[self.reduced_points.operations == op]["x"].mean()
+            y = self.reduced_points[self.reduced_points.operations == op]["y"].mean()
+
+            operation_centroids[op] = [x, y]
+
+        for p in range(0, len(self.reduced_points)-1):
+
+            ops = (f"{self.operations[p]}({self.args[p]})", f"{self.operations[p+1]}({self.args[p+1]})")
+
+            # Get current state
+            if self.real_program_counts[p] == 0:
+                state = operation_centroids["INTERVENE"]
+            else:
+                x, y = self.reduced_points.values[p][0], self.reduced_points.values[p][1]
+                state = self._compute_min_distance([x, y], operation_centroids)
+
+            if not state in self.graph:
+                self.graph[state] = {"arcs": {}, "data": []}
+
+            if self.real_program_counts[p] < self.real_program_counts[p+1]:
+
+                self.graph[state]["data"].append(self.observations[p].tolist()+[ops[1]])
+
+                # Get next state
+                x, y = self.reduced_points.values[p+1][0], self.reduced_points.values[p+1][1]
+                next_state = self._compute_min_distance([x, y], operation_centroids)
+
+                if not next_state in self.graph.get(state):
+                    self.graph.get(state)["arcs"][next_state] = {ops[1]}
+                else:
+                    self.graph.get(state)["arcs"][next_state].add(ops[1])
+
+
+
 
     def _plot_lines(self, fig):
 
