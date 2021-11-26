@@ -29,6 +29,7 @@ class VisualizeAutoma:
         self.draw_arrows = draw_arrows
 
         self.graph = {}
+        self.envs_seen = {}
 
     def get_breadth_first_nodes(self, root_node):
         '''
@@ -91,11 +92,11 @@ class VisualizeAutoma:
             )
 
             self.observations.append(
-                node.observation.numpy()
+                node.env_state
             )
 
             self.points.append(
-                (node.h_lstm.flatten()).numpy()
+                (node.h_lstm.flatten()/2+node.c_lstm.flatten()/2).numpy()
                 #encoder(torch.FloatTensor(node.observation)).numpy()
             )
 
@@ -113,16 +114,58 @@ class VisualizeAutoma:
 
         return found_centroid
 
+    def _get_rules(self, filename):
 
-    def compute(self):
+        from minds.data import Data
+        from minds.check import ConsistencyChecker
+        from minds.options import Options
+        from minds.mxsatsp import MaxSATSparse
+        from minds.mxsatls import MaxSATLitsSep
+        from minds.twostage import TwoStageApproach
+
+        # setting the necessary parameters
+        options = Options()
+        options.solver = 'glucose3'
+        options.cover = 'gurobi'
+        options.opt = True
+        options.verb = 0  # verbosity level
+
+        # reading data from a CSV file
+        data = Data(filename=filename, separator=',',mapfile=options.mapfile, ranges=options.ranges)
+
+        # data may be inconsistent/contradictory
+        checker = ConsistencyChecker(data, options)
+        if checker.status and checker.do() == False:
+            print("[*] Remove inconsistencies")
+            # if we do not remove inconsistency, our approach will fail
+            checker.remove_inconsistent()
+
+        # creating and calling the solver
+        #ruler = MaxSATSparse(data, options)
+        #ruler = MaxSATLitsSep(data, options)
+        ruler = TwoStageApproach(data, options)
+        covers = ruler.compute()
+
+        # printing the result rules for every label/class to stdout
+        for label in covers:
+            for rule in covers[label]:
+                print('rule:', rule)
+
+
+    def compute(self, columns):
         print("[*] Executing TSNE")
-        self.reduced_points = TSNE(n_components=2,
-                                   init="pca",
-                                   perplexity=20,
-                                   method="exact",
-                                   n_jobs=-1,
-                                   random_state=self.seed,
-                                   ).fit_transform(self.points)
+
+        import warnings
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            self.reduced_points = TSNE(n_components=2,
+                                       init="pca",
+                                       metric="euclidean",
+                                       perplexity=20,
+                                       #method="exact",
+                                       n_jobs=-1,
+                                       random_state=self.seed,
+                                       ).fit_transform(self.points)
 
         self.reduced_points = pd.DataFrame(self.reduced_points, columns=["x", "y"])
         self.reduced_points["operations"] = self.operations
@@ -148,10 +191,18 @@ class VisualizeAutoma:
 
             if not state in self.graph:
                 self.graph[state] = {"arcs": {}, "data": []}
+                self.envs_seen[state] = {}
 
             if self.real_program_counts[p] < self.real_program_counts[p+1]:
 
-                self.graph[state]["data"].append(self.observations[p].tolist()+[ops[1]])
+                if "_".join(map(str, self.observations[p])) in self.envs_seen[state]:
+                    if self.envs_seen[state]["_".join(map(str, self.observations[p]))] != str(ops[1]):
+                        print(f"{state}: ERROR")
+                    else:
+                        self.graph[state]["data"].append(self.observations[p] + [str(ops[1])])
+                else:
+                    self.envs_seen[state]["_".join(map(str, self.observations[p]))] = str(ops[1])
+                    self.graph[state]["data"].append(self.observations[p] + [str(ops[1])])
 
                 # Get next state
                 x, y = self.reduced_points.values[p+1][0], self.reduced_points.values[p+1][1]
@@ -162,7 +213,16 @@ class VisualizeAutoma:
                 else:
                     self.graph.get(state)["arcs"][next_state].add(ops[1])
 
+        for k, v in self.graph.items():
 
+            df = pd.DataFrame(v["data"], columns=columns+["operation"], dtype=object)
+
+            #df["outcome"] = df["outcome"].apply(lambda x: 1 if x==0 else 0)
+            df.to_csv(f"{k}.csv", index=None)
+
+            print(f"Getting rules for node {k}")
+            #self._get_rules(f"{k}.csv")
+            print()
 
 
     def _plot_lines(self, fig):

@@ -1,5 +1,5 @@
 from generalized_alphanpi.utils import import_dyn_class
-from generalized_alphanpi.visualize.get_automa import VisualizeAutoma, ComputeAutoma
+from generalized_alphanpi.visualize.get_automa import VisualizeAutoma
 
 from argparse import ArgumentParser
 import torch
@@ -84,5 +84,5 @@ if __name__ == "__main__":
         if (trace.rewards[0] > 0 and not args.failure) or (args.failure and trace.rewards[0] < 0):
             automata.add(policy.encoder, root_node)
 
-    automata.compute()
+    automata.compute(env.parsed_columns)
     automata.plot(save=args.save)
