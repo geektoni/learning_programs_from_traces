@@ -16,9 +16,8 @@ rcParams['figure.figsize'] = 12,6
 
 class VisualizeAutoma:
 
-    def __init__(self, env, operation="INTERVENE", seed=2021, draw_arrows=False):
+    def __init__(self, env, operation="INTERVENE", seed=2021):
         self.env = env
-        self.real_program = []
         self.real_program_counts = []
         self.observations = []
         self.points = []
@@ -26,9 +25,9 @@ class VisualizeAutoma:
         self.args = []
         self.operation = operation
         self.seed = seed
-        self.draw_arrows = draw_arrows
 
         self.graph = {}
+        self.graph_rules = {}
         self.envs_seen = {}
 
     def get_breadth_first_nodes(self, root_node):
@@ -92,7 +91,7 @@ class VisualizeAutoma:
             )
 
             self.observations.append(
-                node.env_state
+                self.env.parse_observation(node.env_state)
             )
 
             self.points.append(
@@ -114,7 +113,47 @@ class VisualizeAutoma:
 
         return found_centroid
 
-    def _get_rules(self, filename):
+
+    def compute(self, columns):
+        print("[*] Executing TSNE")
+
+        for p in range(0, len(self.points)-1):
+
+            ops = (f"{self.operations[p]}({self.args[p]})", f"{self.operations[p+1]}({self.args[p+1]})")
+
+            # Get current state
+            state = self.operations[p]
+
+            if not state in self.graph:
+                self.graph[state] = {"arcs": {}, "data": []}
+                self.envs_seen[state] = {}
+
+            if self.real_program_counts[p] < self.real_program_counts[p+1]:
+
+                self.graph[state]["data"].append(self.observations[p] + [str(ops[1])])
+
+                # Get next state
+                next_state = self.operations[p+1]
+
+                if not next_state in self.graph.get(state):
+                    self.graph.get(state)["arcs"][next_state] = {ops[1]}
+                else:
+                    self.graph.get(state)["arcs"][next_state].add(ops[1])
+
+        for k, v in self.graph.items():
+
+            df = pd.DataFrame(v["data"], columns=columns+["operation"], dtype=object)
+            df.to_csv(f"{k}.csv", index=None)
+
+            print(f"Getting rules for node {k}")
+            self._get_rules(f"{k}.csv", k)
+
+        import pprint
+        print(pprint.pformat(self.graph_rules))
+
+        self._convert_to_dot()
+
+    def _get_rules(self, filename, node_name):
 
         from minds.data import Data
         from minds.check import ConsistencyChecker
@@ -149,131 +188,51 @@ class VisualizeAutoma:
         # printing the result rules for every label/class to stdout
         for label in covers:
             for rule in covers[label]:
-                print('rule:', rule)
 
+                body, operation = self._parse_rule(str(rule))
 
-    def compute(self, columns):
-        print("[*] Executing TSNE")
+                if not node_name in self.graph_rules:
+                    self.graph_rules[node_name] = {operation: {body}}
 
-        import warnings
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore")
-            self.reduced_points = TSNE(n_components=2,
-                                       init="pca",
-                                       metric="euclidean",
-                                       perplexity=20,
-                                       #method="exact",
-                                       n_jobs=-1,
-                                       random_state=self.seed,
-                                       ).fit_transform(self.points)
-
-        self.reduced_points = pd.DataFrame(self.reduced_points, columns=["x", "y"])
-        self.reduced_points["operations"] = self.operations
-
-        operation_centroids = {}
-
-        for op in self.reduced_points["operations"].unique():
-            x = self.reduced_points[self.reduced_points.operations == op]["x"].mean()
-            y = self.reduced_points[self.reduced_points.operations == op]["y"].mean()
-
-            operation_centroids[op] = [x, y]
-
-        for p in range(0, len(self.reduced_points)-1):
-
-            ops = (f"{self.operations[p]}({self.args[p]})", f"{self.operations[p+1]}({self.args[p+1]})")
-
-            # Get current state
-            if self.real_program_counts[p] == 0:
-                state = operation_centroids["INTERVENE"]
-            else:
-                x, y = self.reduced_points.values[p][0], self.reduced_points.values[p][1]
-                state = self._compute_min_distance([x, y], operation_centroids)
-
-            if not state in self.graph:
-                self.graph[state] = {"arcs": {}, "data": []}
-                self.envs_seen[state] = {}
-
-            if self.real_program_counts[p] < self.real_program_counts[p+1]:
-
-                if "_".join(map(str, self.observations[p])) in self.envs_seen[state]:
-                    if self.envs_seen[state]["_".join(map(str, self.observations[p]))] != str(ops[1]):
-                        print(f"{state}: ERROR")
-                    else:
-                        self.graph[state]["data"].append(self.observations[p] + [str(ops[1])])
+                if not operation in self.graph_rules[node_name]:
+                    self.graph_rules[node_name][operation] = {body}
                 else:
-                    self.envs_seen[state]["_".join(map(str, self.observations[p]))] = str(ops[1])
-                    self.graph[state]["data"].append(self.observations[p] + [str(ops[1])])
+                    self.graph_rules.get(node_name)[operation].add(body)
 
-                # Get next state
-                x, y = self.reduced_points.values[p+1][0], self.reduced_points.values[p+1][1]
-                next_state = self._compute_min_distance([x, y], operation_centroids)
+    def _parse_rule(self, rule):
 
-                if not next_state in self.graph.get(state):
-                    self.graph.get(state)["arcs"][next_state] = {ops[1]}
-                else:
-                    self.graph.get(state)["arcs"][next_state].add(ops[1])
+        body, operation = rule.replace("'", "").replace(": ", "=").split("=>")
+        body = " AND ".join([k.strip() for k in body.split(",")])
+        operation = operation.replace("operation=", "").strip()
 
-        for k, v in self.graph.items():
+        return body, operation
 
-            df = pd.DataFrame(v["data"], columns=columns+["operation"], dtype=object)
+    def _convert_to_dot(self, font_size=12, color="black"):
 
-            #df["outcome"] = df["outcome"].apply(lambda x: 1 if x==0 else 0)
-            df.to_csv(f"{k}.csv", index=None)
+        self.file = open("test.dot", 'w')
+        self.file.write('digraph g{ \n')
 
-            print(f"Getting rules for node {k}")
-            #self._get_rules(f"{k}.csv")
-            print()
+        for node, childs in self.graph_rules.items():
+
+            self.file.write("\t" + str(node) + '\n')
+
+            for child, rules in childs.items():
+
+                parsed_rules = " \n ".join([f"({r})" for r in rules])
+                parsed_rules = parsed_rules.replace("=", " equals ")
+
+                child_name = child.split("(")[0]
+
+                # Print edge
+                res = '{} -> {} '.format(str(node), str(child_name))
+                res += '[ '
+                if color is not None:
+                    res += 'color={}, '.format(color)
+                res += 'label=<<FONT POINT-SIZE="{}">{}</FONT>>'.format(
+                    font_size, parsed_rules + " DO " + child)
+                res += '];'
+                self.file.write("\t" + res + '\n')
 
 
-    def _plot_lines(self, fig):
-
-        op_centroids = {}
-
-        for op in self.reduced_points["operations"].unique():
-            x = self.reduced_points[self.reduced_points.operations == op]["x"].mean()
-            y = self.reduced_points[self.reduced_points.operations == op]["y"].mean()
-
-            op_centroids[op] = (x, y)
-
-        arrows = set()
-
-        plot_path = True
-
-        for p in range(0, len(self.reduced_points)-1):
-
-            ops = (f"{self.operations[p]}({self.args[p]})", f"{self.operations[p+1]}({self.args[p+1]})")
-            if ops in arrows:
-                continue
-            else:
-                arrows.add(ops)
-
-            begin = op_centroids.get(self.operations[p])
-            end = op_centroids.get(self.operations[p+1])
-
-            if self.real_program_counts[p] < self.real_program_counts[p+1]:
-                if plot_path:
-                    fig.arrow(begin[0], begin[1],
-                          end[0]-begin[0],
-                          end[1]-begin[1],
-                          head_width=1, length_includes_head=True, width=0.09, color="r")
-                    fig.text(begin[0]+(end[0]-begin[0])/2, begin[1]+(end[1]-begin[1])/2, ops[0])
-                else:
-                    fig.arrow(begin[0], begin[1],
-                              end[0] - begin[0],
-                              end[1] - begin[1],
-                              head_width=1, length_includes_head=True)
-            else:
-                plot_path = False
-
-    def plot(self, save=False):
-        print("[*] Plot values")
-        fig = sns.scatterplot(x="x", y="y", hue="operations", data=self.reduced_points)
-
-        if self.draw_arrows:
-            self._plot_lines(fig)
-
-        if save:
-            plt.tight_layout()
-            plt.savefig("output_automa.png", dpi=400)
-        else:
-            plt.show()
+        self.file.write('}')
+        self.file.close()
