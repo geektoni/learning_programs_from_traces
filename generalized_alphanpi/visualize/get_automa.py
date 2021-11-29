@@ -1,18 +1,7 @@
 import torch
 import pandas as pd
-from sklearn.manifold import TSNE
-from sklearn.decomposition import PCA
 
 import numpy as np
-
-import seaborn as sns
-sns.set_context("paper")
-import matplotlib.pyplot as plt
-
-from matplotlib import rcParams
-
-# figure size in inches
-rcParams['figure.figsize'] = 12,6
 
 class VisualizeAutoma:
 
@@ -95,9 +84,7 @@ class VisualizeAutoma:
             )
 
             self.points.append(
-                #(node.h_lstm.flatten()/2+node.c_lstm.flatten()/2).numpy()
                 node.h_lstm.flatten().numpy()
-                #encoder(torch.FloatTensor(node.observation)).numpy()
             )
 
     def _compute_min_distance(self, point, centroids):
@@ -116,12 +103,7 @@ class VisualizeAutoma:
 
 
     def compute(self, columns):
-        print("[*] Executing DBSCAN")
-        from sklearn.cluster import DBSCAN, KMeans
-        from sklearn.decomposition import PCA
-        scaled_points = PCA(n_components=2).fit_transform(self.points)
-        clusters = KMeans(n_clusters=4, random_state=0).fit(scaled_points).labels_
-        #clusters = DBSCAN(eps=0.3, min_samples=10).fit(scaled_points).labels_
+        print("[*] Compute rules given graph")
 
         for p in range(0, len(self.points)-1):
 
@@ -129,7 +111,6 @@ class VisualizeAutoma:
 
             # Get current state
             state = self.operations[p]
-            #state = clusters[p]
 
             if not state in self.graph:
                 self.graph[state] = {"arcs": {}, "data": []}
@@ -140,7 +121,6 @@ class VisualizeAutoma:
                 self.graph[state]["data"].append(self.observations[p] + [str(ops[1])])
 
                 # Get next state
-                #next_state = clusters[p+1]
                 next_state = self.operations[p+1]
 
                 if not next_state in self.graph.get(state):
@@ -148,18 +128,17 @@ class VisualizeAutoma:
                 else:
                     self.graph.get(state)["arcs"][ops[1]] = set()
 
-        print(self.graph)
-
         for k, v in self.graph.items():
 
             df = pd.DataFrame(v["data"], columns=columns+["operation"], dtype=object)
             df.to_csv(f"{k}.csv", index=None)
 
-            print(f"Getting rules for node {k}")
-            self._get_rules(f"{k}.csv", k)
+            # Stop will be empty, so we do not process
+            if k == "STOP":
+                continue
 
-        import pprint
-        print(pprint.pformat(self.graph_rules))
+            print(f"[*] Getting rules for node {k}")
+            self._get_rules(f"{k}.csv", k)
 
         self._convert_to_dot()
 
@@ -169,18 +148,13 @@ class VisualizeAutoma:
         from minds.check import ConsistencyChecker
         from minds.options import Options
         from minds.mxsatsp import MaxSATSparse
-        from minds.mxsatls import MaxSATLitsSep
-        from minds.twostage import TwoStageApproach
 
         # setting the necessary parameters
-        options = Options()
-        options.solver = 'glucose3'
-        options.cover = 'gurobi'
-        options.opt = True
-        options.verb = 0  # verbosity level
+        options = Options(["exec", "-a", "sparse", "-s", "glucose3", "--opt", filename])
 
         # reading data from a CSV file
-        data = Data(filename=filename, separator=',',mapfile=options.mapfile, ranges=options.ranges)
+        data = Data(filename=options.files[0], mapfile=options.mapfile,
+                    separator=options.separator, ranges=options.ranges)
 
         # data may be inconsistent/contradictory
         checker = ConsistencyChecker(data, options)
@@ -190,9 +164,7 @@ class VisualizeAutoma:
             checker.remove_inconsistent()
 
         # creating and calling the solver
-        #ruler = MaxSATSparse(data, options)
-        #ruler = MaxSATLitsSep(data, options)
-        ruler = TwoStageApproach(data, options)
+        ruler = MaxSATSparse(data, options)
         covers = ruler.compute()
 
         # printing the result rules for every label/class to stdout
@@ -226,7 +198,6 @@ class VisualizeAutoma:
             for child, rules in childs["arcs"].items():
 
                 parsed_rules = " \\n ".join([f"({r})" for r in rules])
-                parsed_rules = parsed_rules.replace("=", " equals ")
 
                 child_name = child.split("(")[0]
 
@@ -240,7 +211,6 @@ class VisualizeAutoma:
                     parsed_rules + "\\n " + child)
                 action_rules += '];'
 
-                #self.file.write("\t" + str(child)+"_"+str(node) + '\n')
                 self.file.write("\t" + action_rules + '\n')
 
                 # Print edge
@@ -248,15 +218,6 @@ class VisualizeAutoma:
                 self.file.write("\t" + res + '\n')
                 res = '{} -> {} '.format(str(node), node_rule_name)
                 self.file.write("\t" + res + '\n')
-                #res += '[ '
-                #if color is not None:
-                #    res += 'color={}, '.format(color)
-                #res += 'label=<<FONT POINT-SIZE="{}">{}</FONT>>'.format(
-                        #font_size, parsed_rules + " DO " + child)
-                #    font_size, child)
-                #res += '];'
-                #self.file.write("\t" + res + '\n')
-
 
         self.file.write('}')
         self.file.close()
