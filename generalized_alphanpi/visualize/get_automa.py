@@ -95,7 +95,8 @@ class VisualizeAutoma:
             )
 
             self.points.append(
-                (node.h_lstm.flatten()/2+node.c_lstm.flatten()/2).numpy()
+                #(node.h_lstm.flatten()/2+node.c_lstm.flatten()/2).numpy()
+                node.h_lstm.flatten().numpy()
                 #encoder(torch.FloatTensor(node.observation)).numpy()
             )
 
@@ -115,7 +116,12 @@ class VisualizeAutoma:
 
 
     def compute(self, columns):
-        print("[*] Executing TSNE")
+        print("[*] Executing DBSCAN")
+        from sklearn.cluster import DBSCAN, KMeans
+        from sklearn.decomposition import PCA
+        scaled_points = PCA(n_components=2).fit_transform(self.points)
+        clusters = KMeans(n_clusters=4, random_state=0).fit(scaled_points).labels_
+        #clusters = DBSCAN(eps=0.3, min_samples=10).fit(scaled_points).labels_
 
         for p in range(0, len(self.points)-1):
 
@@ -123,6 +129,7 @@ class VisualizeAutoma:
 
             # Get current state
             state = self.operations[p]
+            #state = clusters[p]
 
             if not state in self.graph:
                 self.graph[state] = {"arcs": {}, "data": []}
@@ -133,12 +140,15 @@ class VisualizeAutoma:
                 self.graph[state]["data"].append(self.observations[p] + [str(ops[1])])
 
                 # Get next state
+                #next_state = clusters[p+1]
                 next_state = self.operations[p+1]
 
                 if not next_state in self.graph.get(state):
-                    self.graph.get(state)["arcs"][next_state] = {ops[1]}
+                    self.graph.get(state)["arcs"] = {ops[1]: set()}
                 else:
-                    self.graph.get(state)["arcs"][next_state].add(ops[1])
+                    self.graph.get(state)["arcs"][ops[1]] = set()
+
+        print(self.graph)
 
         for k, v in self.graph.items():
 
@@ -191,18 +201,15 @@ class VisualizeAutoma:
 
                 body, operation = self._parse_rule(str(rule))
 
-                if not node_name in self.graph_rules:
-                    self.graph_rules[node_name] = {operation: {body}}
-
-                if not operation in self.graph_rules[node_name]:
-                    self.graph_rules[node_name][operation] = {body}
+                if operation in self.graph[node_name]["arcs"]:
+                    self.graph[node_name]["arcs"][operation].add(body)
                 else:
-                    self.graph_rules.get(node_name)[operation].add(body)
+                    self.graph[node_name]["arcs"][operation] = {body}
 
     def _parse_rule(self, rule):
 
         body, operation = rule.replace("'", "").replace(": ", "=").split("=>")
-        body = " AND ".join([k.strip() for k in body.split(",")])
+        body = " \\n ".join([k.strip() for k in body.split(",")])
         operation = operation.replace("operation=", "").strip()
 
         return body, operation
@@ -212,26 +219,43 @@ class VisualizeAutoma:
         self.file = open("test.dot", 'w')
         self.file.write('digraph g{ \n')
 
-        for node, childs in self.graph_rules.items():
+        for node, childs in self.graph.items():
 
             self.file.write("\t" + str(node) + '\n')
 
-            for child, rules in childs.items():
+            for child, rules in childs["arcs"].items():
 
-                parsed_rules = " \n ".join([f"({r})" for r in rules])
+                parsed_rules = " \\n ".join([f"({r})" for r in rules])
                 parsed_rules = parsed_rules.replace("=", " equals ")
 
                 child_name = child.split("(")[0]
 
-                # Print edge
-                res = '{} -> {} '.format(str(node), str(child_name))
-                res += '[ '
+                node_rule_name = "\t" + str(child.replace("(", "_").replace(")", "_"))+"_"+str(node) + "\t"
+
+                action_rules = node_rule_name
+                action_rules += '[ shape=box,'
                 if color is not None:
-                    res += 'color={}, '.format(color)
-                res += 'label=<<FONT POINT-SIZE="{}">{}</FONT>>'.format(
-                    font_size, parsed_rules + " DO " + child)
-                res += '];'
+                    action_rules += 'color={}, '.format(color)
+                action_rules += 'label=\"{}\"'.format(
+                    parsed_rules + "\\n " + child)
+                action_rules += '];'
+
+                #self.file.write("\t" + str(child)+"_"+str(node) + '\n')
+                self.file.write("\t" + action_rules + '\n')
+
+                # Print edge
+                res = '{} -> {}'.format(node_rule_name, str(child_name))
                 self.file.write("\t" + res + '\n')
+                res = '{} -> {} '.format(str(node), node_rule_name)
+                self.file.write("\t" + res + '\n')
+                #res += '[ '
+                #if color is not None:
+                #    res += 'color={}, '.format(color)
+                #res += 'label=<<FONT POINT-SIZE="{}">{}</FONT>>'.format(
+                        #font_size, parsed_rules + " DO " + child)
+                #    font_size, child)
+                #res += '];'
+                #self.file.write("\t" + res + '\n')
 
 
         self.file.write('}')
