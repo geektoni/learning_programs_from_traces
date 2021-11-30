@@ -137,8 +137,12 @@ class VisualizeAutoma:
             if k == "STOP":
                 continue
 
-            print(f"[*] Getting rules for node {k}")
-            self._get_rules(f"{k}.csv", k)
+            if len(df["operation"].unique()) > 1:
+                print(f"[*] Getting rules for node {k}")
+                self._get_rules(f"{k}.csv", k)
+            else:
+                print(f"[*] Add single rule for node {k}")
+                self.graph[k]["arcs"][df["operation"].unique()[0]] = {'True'}
 
         self._convert_to_dot()
 
