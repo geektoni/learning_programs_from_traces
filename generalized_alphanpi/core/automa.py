@@ -18,6 +18,8 @@ if __name__ == "__main__":
     parser.add_argument("--config", type=str, help="Path to the file with the experiment configuration")
     parser.add_argument("--failure", action="store_true", default=False, help="Visualize an example of a failed track")
     parser.add_argument("--save", action="store_true", default=False, help="Safe automa to disk as figure")
+    parser.add_argument("--save-automa", action="store_true", default=False, help="Save automa model to disk as figure")
+    parser.add_argument("--automa-model-path", type=str, help="Path to the deterministic automa")
     parser.add_argument("--max-tries", type=int, default=50, help="How many example to try")
     parser.add_argument("--seed", type=int, default=2021, help="Seed used to initialize t-sne")
 
@@ -84,3 +86,9 @@ if __name__ == "__main__":
             automata.add(policy.encoder, root_node)
 
     automata.compute(env.parsed_columns)
+
+    # Save the static automa
+    if args.save_automa:
+        with open(args.automa_model_path, "wb") as f:
+            import dill as pickle
+            pickle.dump(automata.automa, f)

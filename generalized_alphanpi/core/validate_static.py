@@ -10,10 +10,12 @@ import time
 import os
 from tqdm import tqdm
 
+import dill
+
 if __name__ == "__main__":
 
     parser = ArgumentParser()
-    parser.add_argument("model", type=str, help="Path to the model we want to visualize.")
+    parser.add_argument("model", type=str, help="Path to the automa model we want to validate.")
     parser.add_argument("task", type=str, help="Task we want to execute")
     parser.add_argument("--config", type=str, help="Path to the file with the experiment configuration")
 
@@ -42,33 +44,8 @@ if __name__ == "__main__":
 
     additional_arguments_from_env = env.get_additional_parameters()
 
-    policy = import_dyn_class(config.get("policy").get("name"))(
-        encoder,
-        config.get("policy").get("hidden_size"),
-        num_programs, num_non_primary_programs,
-        config.get("policy").get("embedding_dim"),
-        config.get("policy").get("encoding_dim"),
-        indices_non_primary_programs,
-        **additional_arguments_from_env
-    )
-
-    policy.load_state_dict(torch.load(args.model))
-
-    MCTS_CLASS = import_dyn_class(config.get("training").get("mcts").get("name"))
-
     idx = env.prog_to_idx[args.task]
-
-    mcts = MCTS_CLASS(
-        env, policy, idx,
-        **config.get("training").get("mcts").get("configuration_parameters")
-    )
-    mcts.exploration = False
-    mcts.number_of_simulations = 5
-    mcts.env.validation = True
-
-    mcts_rewards_normalized = []
-    mcts_rewards = []
-    failures = 0.0
+    failures = 0
 
     ts = time.localtime(time.time())
     date_time = '-{}-{}_{}_{}-{}_{}_{}.csv'.format(args.task, ts[0], ts[1], ts[2], ts[3], ts[4], ts[5])
@@ -78,32 +55,68 @@ if __name__ == "__main__":
         os.path.join(config.get("validation").get("save_results"), results_filename), "w"
     )
 
+    with open(args.model, "rb") as f:
+        import dill as pickle
+        model = pickle.load(f)
+
+    # perform validation, not training
+    env.validation = True
+
+    reward = 0
+
     iterations = min(int(config.get("validation").get("iterations")), len(env.data))
     for _ in tqdm(range(0, iterations)):
 
-        trace, root_node = mcts.sample_execution_trace()
+        _, state_index = env.start_task(idx)
 
-        if trace.rewards[0] > 0:
-            mcts_rewards.append(trace.rewards[0].item())
-            mcts_rewards_normalized.append(1.0)
+        next_action = "INTERVENE(0)"
+        while next_action != "STOP(0)":
+
+            observation = env.memory.copy()
+
+            node_name = next_action.split("(")[0]
+
+            actions = model.get(node_name)
+
+            found=False
+            for a, conditions in actions.items():
+                results = []
+
+                parsed_observation = {c: v for c, v in zip(env.parsed_columns, env.parse_observation(observation))}
+
+                for c in conditions:
+                    tmp = [f(parsed_observation) for f in c]
+                    results.append(all(tmp))
+                results = any(results)
+
+                if results:
+                    next_action = a
+                    found=True
+                    break
+
+            if not found:
+                print("No condition satisfied!")
+                failures += 1
+                break
+
+            action_name, args = next_action.split("(")[0], next_action.split("(")[1].replace(")", "")
+
+            if args.isnumeric():
+                args = int(args)
+
+            env.act(action_name, args)
+            observation = env.memory.copy()
+
+        if env.prog_to_postcondition[env.get_program_from_index(idx)](None, None):
+            reward += 1
         else:
-            mcts_rewards.append(0.0)
-            mcts_rewards_normalized.append(0.0)
             failures += 1
 
-    mcts_rewards_normalized_mean = np.mean(np.array(mcts_rewards_normalized))
-    mcts_rewards_normalized_std = np.std(np.array(mcts_rewards_normalized))
-    mcts_rewards_mean = np.mean(np.array(mcts_rewards))
-    mcts_rewards_std = np.std(np.array(mcts_rewards))
+        env.end_task()
 
 
-    results_file.write("mcts_reward_mean,mcts_reward_normalized_mean,mcts_rewards_std,mcts_rewards_normalized_std\n")
-
-    complete = f"{mcts_rewards_mean},{mcts_rewards_normalized_mean},{mcts_rewards_std},{mcts_rewards_normalized_std}"
-
-    print("mcts_reward_mean,mcts_reward_normalized_mean,mcts_rewards_std,mcts_rewards_normalized_std")
-    print("Complete:", complete)
+    print("Correct:", reward)
     print("Failures:", failures)
 
-    results_file.write(complete + '\n')
-    results_file.close()
+    #results_file.write(complete + '\n')
+    #results_file.close()

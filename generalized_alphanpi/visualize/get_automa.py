@@ -3,6 +3,7 @@ import pandas as pd
 
 import numpy as np
 
+
 class VisualizeAutoma:
 
     def __init__(self, env, operation="INTERVENE", seed=2021):
@@ -17,6 +18,7 @@ class VisualizeAutoma:
 
         self.graph = {}
         self.graph_rules = {}
+        self.automa = {}
         self.envs_seen = {}
 
     def get_breadth_first_nodes(self, root_node):
@@ -62,7 +64,6 @@ class VisualizeAutoma:
                     counter += 1
                     self.real_program_counts.append(counter)
 
-
     def add_point(self, encoder, node):
 
         with torch.no_grad():
@@ -87,27 +88,12 @@ class VisualizeAutoma:
                 node.h_lstm.flatten().numpy()
             )
 
-    def _compute_min_distance(self, point, centroids):
-
-        min_distance = np.inf
-        found_centroid = None
-
-        for k, v in centroids.items():
-
-            tmp = np.linalg.norm(np.array(v) - np.array(point))
-            if tmp < min_distance:
-                min_distance = tmp
-                found_centroid = k
-
-        return found_centroid
-
-
     def compute(self, columns):
         print("[*] Compute rules given graph")
 
-        for p in range(0, len(self.points)-1):
+        for p in range(0, len(self.points) - 1):
 
-            ops = (f"{self.operations[p]}({self.args[p]})", f"{self.operations[p+1]}({self.args[p+1]})")
+            ops = (f"{self.operations[p]}({self.args[p]})", f"{self.operations[p + 1]}({self.args[p + 1]})")
 
             # Get current state
             state = self.operations[p]
@@ -116,12 +102,12 @@ class VisualizeAutoma:
                 self.graph[state] = {"arcs": {}, "data": []}
                 self.envs_seen[state] = {}
 
-            if self.real_program_counts[p] < self.real_program_counts[p+1]:
+            if self.real_program_counts[p] < self.real_program_counts[p + 1]:
 
                 self.graph[state]["data"].append(self.observations[p] + [str(ops[1])])
 
                 # Get next state
-                next_state = self.operations[p+1]
+                next_state = self.operations[p + 1]
 
                 if not next_state in self.graph.get(state):
                     self.graph.get(state)["arcs"] = {ops[1]: set()}
@@ -130,7 +116,7 @@ class VisualizeAutoma:
 
         for k, v in self.graph.items():
 
-            df = pd.DataFrame(v["data"], columns=columns+["operation"], dtype=object)
+            df = pd.DataFrame(v["data"], columns=columns + ["operation"], dtype=object)
             df.to_csv(f"{k}.csv", index=None)
 
             # Stop will be empty, so we do not process
@@ -143,6 +129,11 @@ class VisualizeAutoma:
             else:
                 print(f"[*] Add single rule for node {k}")
                 self.graph[k]["arcs"][df["operation"].unique()[0]] = {'True'}
+                # If there is only an operation available, then we add as a solution true
+                if k not in self.automa:
+                    self.automa[k] = {df["operation"].unique()[0]: [[lambda x: True]]}
+                else:
+                    self.automa[k][df["operation"].unique()[0]].append([lambda x: True])
 
         self._convert_to_dot()
 
@@ -177,10 +168,21 @@ class VisualizeAutoma:
 
                 body, operation = self._parse_rule(str(rule))
 
+                rule_lambdas = self._convert_rule_into_lambda(str(rule))
+
                 if operation in self.graph[node_name]["arcs"]:
                     self.graph[node_name]["arcs"][operation].add(body)
                 else:
                     self.graph[node_name]["arcs"][operation] = {body}
+
+                # Create deterministic automaton
+                if not node_name in self.automa:
+                    self.automa[node_name] = {operation: [rule_lambdas]}
+                else:
+                    if operation in self.automa[node_name]:
+                        self.automa[node_name][operation].append(rule_lambdas)
+                    else:
+                        self.automa[node_name][operation] = [rule_lambdas]
 
     def _parse_rule(self, rule):
 
@@ -189,6 +191,25 @@ class VisualizeAutoma:
         operation = operation.replace("operation=", "").strip()
 
         return body, operation
+
+    def _convert_rule_into_lambda(self, rule):
+
+        body, operation = rule.replace("'", "").split("=>")
+
+        rule_set = []
+
+        rules = body.split(",")
+        for r in rules:
+            negation = "not" in r
+            value = r.split(":")[1].strip()
+            feature = r.split(":")[0].replace("not", "").strip()
+
+            if negation:
+                rule_set.append(lambda x: not x[feature] == value)
+            else:
+                rule_set.append(lambda x: x[feature] == value)
+
+        return rule_set
 
     def _convert_to_dot(self, font_size=12, color="black"):
 
@@ -205,7 +226,7 @@ class VisualizeAutoma:
 
                 child_name = child.split("(")[0]
 
-                node_rule_name = "\t" + str(child.replace("(", "_").replace(")", "_"))+"_"+str(node) + "\t"
+                node_rule_name = "\t" + str(child.replace("(", "_").replace(")", "_")) + "_" + str(node) + "\t"
 
                 action_rules = node_rule_name
                 action_rules += '[ shape=box,'
