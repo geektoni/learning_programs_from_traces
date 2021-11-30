@@ -143,9 +143,10 @@ class VisualizeAutoma:
         from minds.check import ConsistencyChecker
         from minds.options import Options
         from minds.mxsatsp import MaxSATSparse
+        from minds.twostage import TwoStageApproach
 
         # setting the necessary parameters
-        options = Options(["exec", "-a", "sparse", "-s", "glucose3", "--opt", filename])
+        options = Options(["exec", "-a", "2stage", "-s", "glucose3", filename])
 
         # reading data from a CSV file
         data = Data(filename=options.files[0], mapfile=options.mapfile,
@@ -159,7 +160,8 @@ class VisualizeAutoma:
             checker.remove_inconsistent()
 
         # creating and calling the solver
-        ruler = MaxSATSparse(data, options)
+        ruler = TwoStageApproach(data, options)
+        #ruler = MaxSATSparse(data, options)
         covers = ruler.compute()
 
         # printing the result rules for every label/class to stdout
@@ -192,6 +194,12 @@ class VisualizeAutoma:
 
         return body, operation
 
+    def _convert_bool(self, value):
+        if value in ["True", "False"]:
+            return value == "True"
+        else:
+            return value
+
     def _convert_rule_into_lambda(self, rule):
 
         body, operation = rule.replace("'", "").split("=>")
@@ -204,8 +212,10 @@ class VisualizeAutoma:
             value = r.split(":")[1].strip()
             feature = r.split(":")[0].replace("not", "").strip()
 
+            value = self._convert_bool(value)
+
             if negation:
-                rule_set.append(lambda x: not x[feature] == value)
+                rule_set.append(lambda x: not (x[feature] == value))
             else:
                 rule_set.append(lambda x: x[feature] == value)
 

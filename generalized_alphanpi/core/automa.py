@@ -19,7 +19,7 @@ if __name__ == "__main__":
     parser.add_argument("--failure", action="store_true", default=False, help="Visualize an example of a failed track")
     parser.add_argument("--save", action="store_true", default=False, help="Safe automa to disk as figure")
     parser.add_argument("--save-automa", action="store_true", default=False, help="Save automa model to disk as figure")
-    parser.add_argument("--automa-model-path", type=str, help="Path to the deterministic automa")
+    parser.add_argument("--automa-model-path", type=str, default="./automa.pth", help="Path to the deterministic automa")
     parser.add_argument("--max-tries", type=int, default=50, help="How many example to try")
     parser.add_argument("--seed", type=int, default=2021, help="Seed used to initialize t-sne")
 

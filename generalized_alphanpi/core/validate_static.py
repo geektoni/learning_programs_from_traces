@@ -12,6 +12,52 @@ from tqdm import tqdm
 
 import dill
 
+def validation_recursive(env, action, depth):
+
+    if action == "STOP(0)":
+        return [[True, env.memory.copy()]]
+    elif depth < 0:
+        return [[False, env.memory.copy()]]
+    else:
+
+        observation = env.memory.copy()
+        node_name = action.split("(")[0]
+        actions = model.get(node_name)
+
+        total = []
+
+        found = False
+        for a, conditions in actions.items():
+            results = []
+
+            parsed_observation = {c: v for c, v in zip(env.parsed_columns, env.parse_observation(observation))}
+
+            for c in conditions:
+                tmp = [f(parsed_observation) for f in c]
+                results.append(all(tmp))
+            results = any(results)
+
+            if results:
+
+                found = True
+                previous_env = env.memory.copy()
+
+                if a != "STOP(0)":
+                    action_name, args = a.split("(")[0], a.split("(")[1].replace(")", "")
+                    if args.isnumeric():
+                        args = int(args)
+                    env.act(action_name, args)
+
+                total += validation_recursive(env, a, depth-1)
+
+                env.memory = previous_env
+
+        if not found:
+            return [[False, env.memory.copy()]]
+        else:
+            return total
+
+
 if __name__ == "__main__":
 
     parser = ArgumentParser()
@@ -69,8 +115,24 @@ if __name__ == "__main__":
 
         _, state_index = env.start_task(idx)
 
+        max_depth = env.max_depth_dict.get(1)
+
         next_action = "INTERVENE(0)"
-        while next_action != "STOP(0)":
+
+        result = validation_recursive(env, next_action, max_depth)
+
+        for r in result:
+            env.memory = r[1]
+            if env.prog_to_postcondition[env.get_program_from_index(idx)](None, None) and r[0]:
+                reward += 1
+                break
+        env.end_task()
+
+    print("Correct:", reward)
+    print("Failures:", iterations-reward)
+'''
+        no_condition = False
+        while next_action != "STOP(0)" and max_depth >= 0:
 
             observation = env.memory.copy()
 
@@ -95,8 +157,7 @@ if __name__ == "__main__":
                     break
 
             if not found:
-                print("No condition satisfied!")
-                failures += 1
+                no_condition = True
                 break
 
             action_name, args = next_action.split("(")[0], next_action.split("(")[1].replace(")", "")
@@ -107,16 +168,8 @@ if __name__ == "__main__":
             env.act(action_name, args)
             observation = env.memory.copy()
 
-        if env.prog_to_postcondition[env.get_program_from_index(idx)](None, None):
-            reward += 1
-        else:
-            failures += 1
-
-        env.end_task()
-
-
-    print("Correct:", reward)
-    print("Failures:", failures)
+            max_depth -= 1
+'''
 
     #results_file.write(complete + '\n')
     #results_file.close()
