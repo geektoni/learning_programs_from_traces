@@ -88,7 +88,7 @@ class VisualizeAutoma:
                 node.h_lstm.flatten().numpy()
             )
 
-    def compute(self, columns):
+    def compute(self, columns, save=False, dot_file_name=None):
         print("[*] Compute rules given graph")
 
         for p in range(0, len(self.points) - 1):
@@ -117,6 +117,7 @@ class VisualizeAutoma:
         for k, v in self.graph.items():
 
             df = pd.DataFrame(v["data"], columns=columns + ["operation"], dtype=object)
+            df.drop_duplicates(inplace=True)
             df.to_csv(f"{k}.csv", index=None)
 
             # Stop will be empty, so we do not process
@@ -135,7 +136,8 @@ class VisualizeAutoma:
                 else:
                     self.automa[k][df["operation"].unique()[0]].append([lambda x: True])
 
-        self._convert_to_dot()
+        if save:
+            self._convert_to_dot(dot_file_name=dot_file_name)
 
     def _get_rules(self, filename, node_name):
 
@@ -146,7 +148,7 @@ class VisualizeAutoma:
         from minds.twostage import TwoStageApproach
 
         # setting the necessary parameters
-        options = Options(["exec", "-a", "2stage", "-s", "glucose3", filename])
+        options = Options(["exec", "-a", "2steps", "--opt", "-s", "glucose3", filename])
 
         # reading data from a CSV file
         data = Data(filename=options.files[0], mapfile=options.mapfile,
@@ -221,9 +223,11 @@ class VisualizeAutoma:
 
         return rule_set
 
-    def _convert_to_dot(self, font_size=12, color="black"):
+    def _convert_to_dot(self, color="black", dot_file_name=None):
 
-        self.file = open("test.dot", 'w')
+        dot_file_name = "test.dot" if not dot_file_name else dot_file_name
+
+        self.file = open(dot_file_name, 'w')
         self.file.write('digraph g{ \n')
 
         for node, childs in self.graph.items():
@@ -236,7 +240,7 @@ class VisualizeAutoma:
 
                 child_name = child.split("(")[0]
 
-                node_rule_name = "\t" + str(child.replace("(", "_").replace(")", "_")) + "_" + str(node) + "\t"
+                node_rule_name = "\t" + str(child.replace("(", "_").replace(")", "_").replace("/", "_")) + "_" + str(node) + "\t"
 
                 action_rules = node_rule_name
                 action_rules += '[ shape=box,'
