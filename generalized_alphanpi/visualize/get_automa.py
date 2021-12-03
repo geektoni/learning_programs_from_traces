@@ -3,6 +3,10 @@ import pandas as pd
 
 import numpy as np
 
+# Lambda closure, as per
+# https://stackoverflow.com/questions/34854400/python-dict-of-lambda-functions
+def make_closure(action):
+    return lambda x=None: action
 
 class VisualizeAutoma:
 
@@ -20,6 +24,8 @@ class VisualizeAutoma:
         self.graph_rules = {}
         self.automa = {}
         self.envs_seen = {}
+
+        self.encoder = env.data_encoder
 
     def get_breadth_first_nodes(self, root_node):
         '''
@@ -41,7 +47,7 @@ class VisualizeAutoma:
                 stack.append(child)
         return nodes
 
-    def add(self, encoder, node):
+    def add(self, node):
         counter = 0
         nodes = self.get_breadth_first_nodes(node)
 
@@ -60,11 +66,11 @@ class VisualizeAutoma:
             nodes_this_depth = nodes_per_depth[d]
             for tmp_node in nodes_this_depth:
                 if tmp_node.selected:
-                    self.add_point(encoder, tmp_node)
+                    self.add_point(tmp_node)
                     counter += 1
                     self.real_program_counts.append(counter)
 
-    def add_point(self, encoder, node):
+    def add_point(self, node):
 
         with torch.no_grad():
             if node.program_from_parent_index is None:
@@ -88,7 +94,7 @@ class VisualizeAutoma:
                 node.h_lstm.flatten().numpy()
             )
 
-    def compute(self, columns, save=False, dot_file_name=None):
+    def compute(self, columns, tree=False, save=False, dot_file_name=None):
         print("[*] Compute rules given graph")
 
         for p in range(0, len(self.points) - 1):
@@ -115,9 +121,10 @@ class VisualizeAutoma:
                     self.graph.get(state)["arcs"][ops[1]] = set()
 
         for k, v in self.graph.items():
-
             df = pd.DataFrame(v["data"], columns=columns + ["operation"], dtype=object)
             df.drop_duplicates(inplace=True)
+            # Remove inconsistencies
+            df = df[df.groupby(columns)["operation"].transform('nunique') == 1]
             df.to_csv(f"{k}.csv", index=None)
 
             # Stop will be empty, so we do not process
@@ -126,18 +133,52 @@ class VisualizeAutoma:
 
             if len(df["operation"].unique()) > 1:
                 print(f"[*] Getting rules for node {k}")
-                self._get_rules(f"{k}.csv", k)
+
+                if tree:
+                    self._compute_tree(f"{k}.csv", k)
+                else:
+                    self._get_rules(f"{k}.csv", k)
             else:
                 print(f"[*] Add single rule for node {k}")
                 self.graph[k]["arcs"][df["operation"].unique()[0]] = {'True'}
-                # If there is only an operation available, then we add as a solution true
-                if k not in self.automa:
-                    self.automa[k] = {df["operation"].unique()[0]: [[lambda x: True]]}
-                else:
-                    self.automa[k][df["operation"].unique()[0]].append([lambda x: True])
 
-        if save:
+                # If we have the tree then, the operation is simply returning
+                # the correct action
+                if tree:
+                    self.automa[k] = make_closure(df["operation"].unique()[0])
+                else:
+                    # If there is only an operation available, then we add as a solution true
+                    if k not in self.automa:
+                        self.automa[k] = {df["operation"].unique()[0]: [[lambda x: True]]}
+                    else:
+                        self.automa[k][df["operation"].unique()[0]].append([lambda x: True])
+
+        if save and not tree:
             self._convert_to_dot(dot_file_name=dot_file_name)
+
+
+    def _compute_tree(self, filename, node_name):
+
+        from sklearn import tree
+
+        df = pd.read_csv(filename)
+
+        Y = df["operation"]
+        df.drop(columns=["operation"], inplace=True)
+
+        columns = self.env.categorical_cols
+        cat_ohe = self.encoder.transform(df[columns]).toarray()
+        ohe_df = pd.DataFrame(cat_ohe, columns=self.encoder.get_feature_names_out(input_features=columns))
+        df.reset_index(drop=True, inplace=True)
+        df = pd.concat([df, ohe_df], axis=1).drop(columns=columns, axis=1)
+
+        columns_add = df.columns.tolist()
+        columns_add = [c.replace("<=", " ").replace(">=", " ").replace("<", " ").replace(">", " ") for c in columns_add]
+
+        clf = tree.DecisionTreeClassifier()
+        clf = clf.fit(df.values, Y.values)
+
+        self.automa[node_name] = clf
 
     def _get_rules(self, filename, node_name):
 

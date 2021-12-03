@@ -24,6 +24,7 @@ if __name__ == "__main__":
     parser.add_argument("--max-tries", type=int, default=50, help="How many example to try")
     parser.add_argument("--seed", type=int, default=2021, help="Seed used to initialize t-sne")
     parser.add_argument("--single-core", default=True, action="store_false", help="Run everything with a single core.")
+    parser.add_argument("--tree", default=False, action="store_true", help="Replace solver with decision tree")
 
     args = parser.parse_args()
     config = yaml.load(open(args.config),Loader=yaml.FullLoader)
@@ -118,10 +119,10 @@ if __name__ == "__main__":
         if rank==0:
             for trace in traces:
                 if (trace[0].rewards[0] > 0 and not args.failure) or (args.failure and trace[0].rewards[0] < 0):
-                    automata.add(policy.encoder, trace[1])
+                    automata.add(trace[1])
 
     if rank == 0:
-        automata.compute(env.parsed_columns, dot_file_name=args.dot_path, save=args.save_dot)
+        automata.compute(env.parsed_columns, tree=args.tree, dot_file_name=args.dot_path, save=args.save_dot)
 
         # Save the static automa
         if args.save_automa:

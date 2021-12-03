@@ -12,6 +12,31 @@ from tqdm import tqdm
 
 import dill
 
+def validation_recursive_tree(model, env, action, depth):
+    if action == "STOP(0)":
+        return [[True, env.memory.copy()]]
+    elif depth < 0:
+        return [[False, env.memory.copy()]]
+    else:
+        node_name = action.split("(")[0]
+        actions = model.get(node_name)
+
+        if isinstance(actions, type(lambda x:0)):
+            next_op = actions(None)
+        else:
+            next_op = actions.predict([env.get_observation().tolist()[:-1]])[0]
+
+        if next_op != "STOP(0)":
+            action_name, args = next_op.split("(")[0], next_op.split("(")[1].replace(")", "")
+            if args.isnumeric():
+                args = int(args)
+            env.act(action_name, args)
+
+            return validation_recursive_tree(model, env, next_op, depth-1)
+        else:
+            return [[True, env.memory.copy()]]
+
+
 def validation_recursive(env, action, depth, alpha=0.65):
 
     if action == "STOP(0)":
@@ -75,6 +100,7 @@ if __name__ == "__main__":
     parser.add_argument("--config", type=str, help="Path to the file with the experiment configuration")
     parser.add_argument("--alpha", type=float, default=0.65, help="Percentage of successful rules satisfied")
     parser.add_argument("--single-core", default=True, action="store_false", help="Run everything with a single core.")
+    parser.add_argument("--tree", default=False, action="store_true", help="Replace solver with decision tree")
 
     args = parser.parse_args()
     config = yaml.load(open(args.config),Loader=yaml.FullLoader)
@@ -153,7 +179,10 @@ if __name__ == "__main__":
 
         next_action = "INTERVENE(0)"
 
-        results = validation_recursive(env, next_action, max_depth, args.alpha)
+        if args.tree:
+            results = validation_recursive_tree(model, env, next_action, max_depth)
+        else:
+            results = validation_recursive(env, next_action, max_depth, args.alpha)
 
         if not args.single_core:
             results = comm.gather(results, root=0)
