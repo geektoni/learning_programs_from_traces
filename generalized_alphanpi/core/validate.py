@@ -1,4 +1,4 @@
-from generalized_alphanpi.utils import import_dyn_class
+from generalized_alphanpi.utils import import_dyn_class, get_cost_from_env, get_cost_from_tree
 
 import numpy as np
 
@@ -16,6 +16,7 @@ if __name__ == "__main__":
     parser.add_argument("model", type=str, help="Path to the model we want to visualize.")
     parser.add_argument("task", type=str, help="Task we want to execute")
     parser.add_argument("--config", type=str, help="Path to the file with the experiment configuration")
+    parser.add_argument("--save", default=False, action="store_true", help="Save result to file")
 
     args = parser.parse_args()
     config = yaml.load(open(args.config),Loader=yaml.FullLoader)
@@ -68,15 +69,17 @@ if __name__ == "__main__":
 
     mcts_rewards_normalized = []
     mcts_rewards = []
+    mcts_cost = []
     failures = 0.0
 
     ts = time.localtime(time.time())
     date_time = '-{}-{}_{}_{}-{}_{}_{}.csv'.format(args.task, ts[0], ts[1], ts[2], ts[3], ts[4], ts[5])
 
-    results_filename = config.get("validation").get("save_results_name")+date_time
-    results_file = open(
-        os.path.join(config.get("validation").get("save_results"), results_filename), "w"
-    )
+    if args.save:
+        results_filename = config.get("validation").get("save_results_name")+date_time
+        results_file = open(
+            os.path.join(config.get("validation").get("save_results"), results_filename), "w"
+        )
 
     iterations = min(int(config.get("validation").get("iterations")), len(env.data))
     for _ in tqdm(range(0, iterations)):
@@ -86,6 +89,7 @@ if __name__ == "__main__":
         if trace.rewards[0] > 0:
             mcts_rewards.append(trace.rewards[0].item())
             mcts_rewards_normalized.append(1.0)
+            mcts_cost.append(get_cost_from_tree(env, root_node))
         else:
             mcts_rewards.append(0.0)
             mcts_rewards_normalized.append(0.0)
@@ -95,15 +99,17 @@ if __name__ == "__main__":
     mcts_rewards_normalized_std = np.std(np.array(mcts_rewards_normalized))
     mcts_rewards_mean = np.mean(np.array(mcts_rewards))
     mcts_rewards_std = np.std(np.array(mcts_rewards))
+    mcts_cost_mean = np.mean(mcts_cost)
+    mcts_cost_std = np.std(mcts_cost)
 
+    complete = f"{mcts_rewards_mean},{mcts_rewards_normalized_mean},{mcts_rewards_std},{mcts_rewards_normalized_std}, {mcts_cost_mean}, {mcts_cost_std}"
 
-    results_file.write("mcts_reward_mean,mcts_reward_normalized_mean,mcts_rewards_std,mcts_rewards_normalized_std\n")
-
-    complete = f"{mcts_rewards_mean},{mcts_rewards_normalized_mean},{mcts_rewards_std},{mcts_rewards_normalized_std}"
-
-    print("mcts_reward_mean,mcts_reward_normalized_mean,mcts_rewards_std,mcts_rewards_normalized_std")
+    print("mcts_reward_mean,mcts_reward_normalized_mean,mcts_rewards_std,mcts_rewards_normalized_std,mcts_cost_mean,mcts_cost_std")
     print("Complete:", complete)
     print("Failures:", failures)
 
-    results_file.write(complete + '\n')
-    results_file.close()
+    # Save results to a file
+    if args.save:
+        results_file.write("mcts_reward_mean,mcts_reward_normalized_mean,mcts_rewards_std,mcts_rewards_normalized_std,mcts_cost_mean,mcts_cost_std\n")
+        results_file.write(complete + '\n')
+        results_file.close()

@@ -1,9 +1,9 @@
-from generalized_alphanpi.utils import import_dyn_class
+from generalized_alphanpi.utils import import_dyn_class, get_cost_from_env
 
 import numpy as np
+import pandas as pd
 
 from argparse import ArgumentParser
-import torch
 import yaml
 
 import time
@@ -12,11 +12,12 @@ from tqdm import tqdm
 
 import dill
 
-def validation_recursive_tree(model, env, action, depth):
+def validation_recursive_tree(model, env, action, depth, cost, action_list):
     if action == "STOP(0)":
-        return [[True, env.memory.copy()]]
+        action_list.append(("STOP", "0"))
+        return [[True, env.memory.copy(), cost, action_list]]
     elif depth < 0:
-        return [[False, env.memory.copy()]]
+        return [[False, env.memory.copy(), cost, action_list]]
     else:
         node_name = action.split("(")[0]
         actions = model.get(node_name)
@@ -28,13 +29,20 @@ def validation_recursive_tree(model, env, action, depth):
 
         if next_op != "STOP(0)":
             action_name, args = next_op.split("(")[0], next_op.split("(")[1].replace(")", "")
+
+            action_list.append((action_name, args))
+
             if args.isnumeric():
                 args = int(args)
+
+            cost += get_cost_from_env(env, action_name, str(args))
+
             env.act(action_name, args)
 
-            return validation_recursive_tree(model, env, next_op, depth-1)
+            return validation_recursive_tree(model, env, next_op, depth-1, cost, action_list)
         else:
-            return [[True, env.memory.copy()]]
+            action_list.append(("STOP", "0"))
+            return [[True, env.memory.copy(), cost, action_list]]
 
 
 def validation_recursive(env, action, depth, alpha=0.65):
@@ -101,6 +109,7 @@ if __name__ == "__main__":
     parser.add_argument("--alpha", type=float, default=0.65, help="Percentage of successful rules satisfied")
     parser.add_argument("--single-core", default=True, action="store_false", help="Run everything with a single core.")
     parser.add_argument("--tree", default=False, action="store_true", help="Replace solver with decision tree")
+    parser.add_argument("--save", default=False, action="store_true", help="Save result to file")
 
     args = parser.parse_args()
     config = yaml.load(open(args.config),Loader=yaml.FullLoader)
@@ -119,6 +128,8 @@ if __name__ == "__main__":
     env = None
     reward = 0
     results_file = None
+    costs = None
+    total_actions = None
 
     if rank == 0:
 
@@ -148,12 +159,13 @@ if __name__ == "__main__":
         failures = 0
 
         ts = time.localtime(time.time())
-        date_time = 'validation-static-{}-{}_{}_{}-{}_{}_{}.csv'.format(args.task, ts[0], ts[1], ts[2], ts[3], ts[4], ts[5])
+        date_time = '-validation-static-{}-{}_{}_{}-{}_{}_{}.csv'.format(args.task, ts[0], ts[1], ts[2], ts[3], ts[4], ts[5])
 
-        results_filename = config.get("validation").get("save_results_name")+date_time
-        results_file = open(
-            os.path.join(config.get("validation").get("save_results"), results_filename), "w"
-        )
+        if args.save:
+            results_filename = config.get("validation").get("save_results_name")+date_time
+            results_file = open(
+                os.path.join(config.get("validation").get("save_results"), results_filename), "w"
+            )
 
         with open(args.model, "rb") as f:
             import dill as pickle
@@ -163,6 +175,8 @@ if __name__ == "__main__":
         env.validation = True
 
         reward = 0
+        costs = []
+        total_actions = []
 
     iterations = min(int(config.get("validation").get("iterations")), len(env.data))
 
@@ -180,7 +194,7 @@ if __name__ == "__main__":
         next_action = "INTERVENE(0)"
 
         if args.tree:
-            results = validation_recursive_tree(model, env, next_action, max_depth)
+            results = validation_recursive_tree(model, env, next_action, max_depth, 0, [])
         else:
             results = validation_recursive(env, next_action, max_depth, args.alpha)
 
@@ -195,15 +209,32 @@ if __name__ == "__main__":
                     env.memory = r[1]
                     if env.prog_to_postcondition[env.get_program_from_index(idx)](None, None) and r[0]:
                         reward += 1
+                        costs.append(r[2])
+                        total_actions.append(r[3])
                         break
 
         env.end_task()
 
     if rank == 0:
+
+        # Create dataframe with the complete actions
+        traces = []
+
+        for k, trace in enumerate(total_actions):
+            for p, a in trace:
+                traces.append([
+                    k, p, a
+                ])
+
+        t = pd.DataFrame(traces, columns=["id", "program", "argument"])
+
         print("Correct:", reward)
         print("Failures:", iterations-reward)
-        results_file.write(f"correct,wrong" + '\n')
-        results_file.write(f"{reward}, {iterations-reward}" + '\n')
-        results_file.close()
+        print("Mean/std cost: ", sum(costs)/len(costs), np.std(costs))
+
+        if args.save:
+            results_file.write(f"correct,wrong,mean_cost,std_cost" + '\n')
+            results_file.write(f"{reward}, {iterations-reward}, {sum(costs)/len(costs)}, {np.std(costs)}" + '\n')
+            results_file.close()
 
 

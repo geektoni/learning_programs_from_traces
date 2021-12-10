@@ -51,3 +51,46 @@ def compute_q_value(node, qvalue_temperature):
     else:
         q_val_action = 0.0
     return q_val_action
+
+def get_cost_from_env(env, action_name, args, env_state = None):
+
+    tmp_state = None
+    if env_state is not None:
+        tmp_state = env.memory.copy()
+        env.memory = env_state
+
+    if args.isnumeric():
+        args = int(args)
+
+    action_index = env.programs_library.get(action_name).get("index")
+    args_index = env.complete_arguments.index(args)
+
+    cost = env.get_cost(action_index, args_index)
+
+    if tmp_state:
+        env.memory = tmp_state
+
+    return cost
+
+
+def get_cost_from_tree(env, root_node):
+
+    cost = []
+    stack = [root_node]
+    while stack:
+        cur_node = stack[0]
+
+        if cur_node.selected:
+
+            if cur_node.program_from_parent_index is not None:
+
+                action_name = env.get_program_from_index(cur_node.program_from_parent_index)
+
+                cost.append(
+                    get_cost_from_env(env, action_name, str(cur_node.args), cur_node.env_state.copy())
+                )
+
+        stack = stack[1:]
+        for child in cur_node.childs:
+            stack.append(child)
+    return sum(cost)
