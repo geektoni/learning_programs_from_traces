@@ -17,6 +17,7 @@ if __name__ == "__main__":
     parser.add_argument("task", type=str, help="Task we want to execute")
     parser.add_argument("--config", type=str, help="Path to the file with the experiment configuration")
     parser.add_argument("--save", default=False, action="store_true", help="Save result to file")
+    parser.add_argument("--to-stdout", default=False, action="store_true", help="Print results to stdout")
 
     args = parser.parse_args()
     config = yaml.load(open(args.config),Loader=yaml.FullLoader)
@@ -25,6 +26,9 @@ if __name__ == "__main__":
         **config.get("environment").get("configuration_parameters", {}),
         **config.get("validation").get("environment").get("configuration_parameters", {})
     )
+
+    method="mcts"
+    dataset=config.get("validation").get("dataset_name")
 
     num_programs = env.get_num_programs()
     num_non_primary_programs = env.get_num_non_primary_programs()
@@ -84,7 +88,7 @@ if __name__ == "__main__":
         )
 
     iterations = min(int(config.get("validation").get("iterations")), len(env.data))
-    for _ in tqdm(range(0, iterations)):
+    for _ in tqdm(range(0, iterations), disable=args.to_stdout):
 
         trace, root_node = mcts.sample_execution_trace()
 
@@ -108,14 +112,16 @@ if __name__ == "__main__":
     mcts_length_mean = np.mean(mcts_length)
     mcts_length_std = np.std(mcts_length)
 
-    complete = f"{mcts_rewards_mean},{mcts_rewards_normalized_mean},{mcts_rewards_std},{mcts_rewards_normalized_std},{mcts_cost_mean},{mcts_cost_std},{mcts_length_mean},{mcts_length_std}"
+    complete = f"{mcts_rewards_normalized_mean},{iterations-mcts_rewards_normalized_mean},{mcts_cost_mean},{mcts_cost_std},{mcts_length_mean},{mcts_length_std}"
 
-    print("mcts_reward_mean,mcts_reward_normalized_mean,mcts_rewards_std,mcts_rewards_normalized_std,mcts_cost_mean,mcts_cost_std,mcts_length_mean,mcts_length_std")
-    print("Complete:", complete)
-    print("Failures:", failures)
+    #print(f"correct,wrong,mean_cost,std_cost,mean_length,std_length")
+    #print("Complete:", complete)
+    #print("Failures:", failures)
+    if args.to_stdout:
+        print(f"{method},{dataset},{mcts_rewards_normalized_mean},{iterations-mcts_rewards_normalized_mean},{mcts_cost_mean},{mcts_cost_std},{mcts_length_mean},{mcts_length_std}")
 
     # Save results to a file
     if args.save:
-        results_file.write("mcts_reward_mean,mcts_reward_normalized_mean,mcts_rewards_std,mcts_rewards_normalized_std,mcts_cost_mean,mcts_cost_std,mcts_length_mean,mcts_length_std\n")
+        results_file.write(f"method,dataset,correct,wrong,mean_cost,std_cost,mean_length,std_length\n")
         results_file.write(complete + '\n')
         results_file.close()

@@ -110,6 +110,8 @@ if __name__ == "__main__":
     parser.add_argument("--single-core", default=True, action="store_false", help="Run everything with a single core.")
     parser.add_argument("--tree", default=False, action="store_true", help="Replace solver with decision tree")
     parser.add_argument("--save", default=False, action="store_true", help="Save result to file")
+    parser.add_argument("--to-stdout", default=False, action="store_true", help="Print results to stdout")
+
 
     args = parser.parse_args()
     config = yaml.load(open(args.config),Loader=yaml.FullLoader)
@@ -131,6 +133,8 @@ if __name__ == "__main__":
     costs = None
     total_actions = None
     length_actions = None
+    method = None
+    dataset = None
 
     if rank == 0:
 
@@ -138,6 +142,9 @@ if __name__ == "__main__":
             **config.get("environment").get("configuration_parameters", {}),
             **config.get("validation").get("environment").get("configuration_parameters", {})
         )
+
+        method="program"
+        dataset=config.get("validation").get("dataset_name")
 
         num_programs = env.get_num_programs()
         num_non_primary_programs = env.get_num_non_primary_programs()
@@ -182,7 +189,7 @@ if __name__ == "__main__":
 
     iterations = min(int(config.get("validation").get("iterations")), len(env.data))
 
-    for _ in tqdm(range(0, iterations//size)):
+    for _ in tqdm(range(0, iterations//size), disable=args.to_stdout):
 
         if not args.single_core:
             env = comm.bcast(env, root=0)
@@ -231,14 +238,17 @@ if __name__ == "__main__":
 
         t = pd.DataFrame(traces, columns=["id", "program", "argument"])
 
-        print("Correct:", reward)
-        print("Failures:", iterations-reward)
-        print("Mean/std cost: ", sum(costs)/len(costs), np.std(costs))
-        print("Mean/std length actions: ", sum(length_actions) / len(length_actions), np.std(length_actions))
+        #print("Correct:", reward)
+        #print("Failures:", iterations-reward)
+        #print("Mean/std cost: ", sum(costs)/len(costs), np.std(costs))
+        #print("Mean/std length actions: ", sum(length_actions) / len(length_actions), np.std(length_actions))
+
+        if args.to_stdout:
+            print(f"{method},{dataset},{reward},{iterations-reward},{sum(costs)/len(costs)},{np.std(costs)},{sum(length_actions) / len(length_actions)},{np.std(length_actions)}")
 
         if args.save:
-            results_file.write(f"correct,wrong,mean_cost,std_cost,mean_length, std_length" + '\n')
-            results_file.write(f"{reward}, {iterations-reward}, {sum(costs)/len(costs)}, {np.std(costs)}, {sum(length_actions) / len(length_actions)}, {np.std(length_actions)}" + '\n')
+            results_file.write(f"method,dataset,correct,wrong,mean_cost,std_cost,mean_length,std_length" + '\n')
+            results_file.write(f"{method},{dataset},{reward}, {iterations-reward}, {sum(costs)/len(costs)},{np.std(costs)},{sum(length_actions) / len(length_actions)},{np.std(length_actions)}" + '\n')
             results_file.close()
 
 
