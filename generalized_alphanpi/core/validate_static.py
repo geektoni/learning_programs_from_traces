@@ -130,6 +130,7 @@ if __name__ == "__main__":
     results_file = None
     costs = None
     total_actions = None
+    length_actions = None
 
     if rank == 0:
 
@@ -177,6 +178,7 @@ if __name__ == "__main__":
         reward = 0
         costs = []
         total_actions = []
+        length_actions = []
 
     iterations = min(int(config.get("validation").get("iterations")), len(env.data))
 
@@ -211,6 +213,7 @@ if __name__ == "__main__":
                         reward += 1
                         costs.append(r[2])
                         total_actions.append(r[3])
+                        length_actions.append(len(r[3]))
                         break
 
         env.end_task()
@@ -231,10 +234,11 @@ if __name__ == "__main__":
         print("Correct:", reward)
         print("Failures:", iterations-reward)
         print("Mean/std cost: ", sum(costs)/len(costs), np.std(costs))
+        print("Mean/std length actions: ", sum(length_actions) / len(length_actions), np.std(length_actions))
 
         if args.save:
-            results_file.write(f"correct,wrong,mean_cost,std_cost" + '\n')
-            results_file.write(f"{reward}, {iterations-reward}, {sum(costs)/len(costs)}, {np.std(costs)}" + '\n')
+            results_file.write(f"correct,wrong,mean_cost,std_cost,mean_length, std_length" + '\n')
+            results_file.write(f"{reward}, {iterations-reward}, {sum(costs)/len(costs)}, {np.std(costs)}, {sum(length_actions) / len(length_actions)}, {np.std(length_actions)}" + '\n')
             results_file.close()
 
 

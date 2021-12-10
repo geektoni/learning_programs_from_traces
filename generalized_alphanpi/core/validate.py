@@ -70,11 +70,13 @@ if __name__ == "__main__":
     mcts_rewards_normalized = []
     mcts_rewards = []
     mcts_cost = []
+    mcts_length = []
     failures = 0.0
 
     ts = time.localtime(time.time())
     date_time = '-{}-{}_{}_{}-{}_{}_{}.csv'.format(args.task, ts[0], ts[1], ts[2], ts[3], ts[4], ts[5])
 
+    results_file = None
     if args.save:
         results_filename = config.get("validation").get("save_results_name")+date_time
         results_file = open(
@@ -87,9 +89,11 @@ if __name__ == "__main__":
         trace, root_node = mcts.sample_execution_trace()
 
         if trace.rewards[0] > 0:
+            cost, length = get_cost_from_tree(env, root_node)
             mcts_rewards.append(trace.rewards[0].item())
             mcts_rewards_normalized.append(1.0)
-            mcts_cost.append(get_cost_from_tree(env, root_node))
+            mcts_cost.append(cost)
+            mcts_length.append(length)
         else:
             mcts_rewards.append(0.0)
             mcts_rewards_normalized.append(0.0)
@@ -101,15 +105,17 @@ if __name__ == "__main__":
     mcts_rewards_std = np.std(np.array(mcts_rewards))
     mcts_cost_mean = np.mean(mcts_cost)
     mcts_cost_std = np.std(mcts_cost)
+    mcts_length_mean = np.mean(mcts_length)
+    mcts_length_std = np.std(mcts_length)
 
-    complete = f"{mcts_rewards_mean},{mcts_rewards_normalized_mean},{mcts_rewards_std},{mcts_rewards_normalized_std}, {mcts_cost_mean}, {mcts_cost_std}"
+    complete = f"{mcts_rewards_mean},{mcts_rewards_normalized_mean},{mcts_rewards_std},{mcts_rewards_normalized_std},{mcts_cost_mean},{mcts_cost_std},{mcts_length_mean},{mcts_length_std}"
 
-    print("mcts_reward_mean,mcts_reward_normalized_mean,mcts_rewards_std,mcts_rewards_normalized_std,mcts_cost_mean,mcts_cost_std")
+    print("mcts_reward_mean,mcts_reward_normalized_mean,mcts_rewards_std,mcts_rewards_normalized_std,mcts_cost_mean,mcts_cost_std,mcts_length_mean,mcts_length_std")
     print("Complete:", complete)
     print("Failures:", failures)
 
     # Save results to a file
     if args.save:
-        results_file.write("mcts_reward_mean,mcts_reward_normalized_mean,mcts_rewards_std,mcts_rewards_normalized_std,mcts_cost_mean,mcts_cost_std\n")
+        results_file.write("mcts_reward_mean,mcts_reward_normalized_mean,mcts_rewards_std,mcts_rewards_normalized_std,mcts_cost_mean,mcts_cost_std,mcts_length_mean,mcts_length_std\n")
         results_file.write(complete + '\n')
         results_file.close()

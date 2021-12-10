@@ -77,10 +77,12 @@ def get_cost_from_tree(env, root_node):
 
     cost = []
     stack = [root_node]
+    length = 0
     while stack:
         cur_node = stack[0]
 
         if cur_node.selected:
+            length += 1
 
             if cur_node.program_from_parent_index is not None:
 
@@ -93,4 +95,4 @@ def get_cost_from_tree(env, root_node):
         stack = stack[1:]
         for child in cur_node.childs:
             stack.append(child)
-    return sum(cost)
+    return sum(cost), length
