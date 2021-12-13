@@ -112,7 +112,7 @@ if __name__ == "__main__":
     mcts_length_mean = np.mean(mcts_length)
     mcts_length_std = np.std(mcts_length)
 
-    complete = f"{mcts_rewards_normalized_mean},{iterations-mcts_rewards_normalized_mean},{mcts_cost_mean},{mcts_cost_std},{mcts_length_mean},{mcts_length_std}"
+    complete = f"{mcts_rewards_normalized_mean},{1-mcts_rewards_normalized_mean},{mcts_cost_mean},{mcts_cost_std},{mcts_length_mean},{mcts_length_std}"
 
     #print(f"correct,wrong,mean_cost,std_cost,mean_length,std_length")
     #print("Complete:", complete)

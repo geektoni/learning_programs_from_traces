@@ -182,7 +182,7 @@ if __name__ == "__main__":
         # perform validation, not training
         env.validation = True
 
-        reward = 0
+        reward = []
         costs = []
         total_actions = []
         length_actions = []
@@ -217,11 +217,13 @@ if __name__ == "__main__":
                 for r in R:
                     env.memory = r[1]
                     if env.prog_to_postcondition[env.get_program_from_index(idx)](None, None) and r[0]:
-                        reward += 1
+                        reward.append(1)
                         costs.append(r[2])
                         total_actions.append(r[3])
                         length_actions.append(len(r[3]))
                         break
+                    else:
+                        reward.append(0)
 
         env.end_task()
 
@@ -244,11 +246,11 @@ if __name__ == "__main__":
         #print("Mean/std length actions: ", sum(length_actions) / len(length_actions), np.std(length_actions))
 
         if args.to_stdout:
-            print(f"{method},{dataset},{reward},{iterations-reward},{sum(costs)/len(costs)},{np.std(costs)},{sum(length_actions) / len(length_actions)},{np.std(length_actions)}")
+            print(f"{method},{dataset},{np.mean(reward)},{1-np.mean(reward)},{sum(costs)/len(costs)},{np.std(costs)},{sum(length_actions) / len(length_actions)},{np.std(length_actions)}")
 
         if args.save:
             results_file.write(f"method,dataset,correct,wrong,mean_cost,std_cost,mean_length,std_length" + '\n')
-            results_file.write(f"{method},{dataset},{reward}, {iterations-reward}, {sum(costs)/len(costs)},{np.std(costs)},{sum(length_actions) / len(length_actions)},{np.std(length_actions)}" + '\n')
+            results_file.write(f"{method},{dataset},{reward}, {1-np.mean(reward)}, {sum(costs)/len(costs)},{np.std(costs)},{sum(length_actions) / len(length_actions)},{np.std(length_actions)}" + '\n')
             results_file.close()
 
 
