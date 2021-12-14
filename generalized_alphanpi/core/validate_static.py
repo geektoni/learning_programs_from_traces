@@ -135,6 +135,7 @@ if __name__ == "__main__":
     length_actions = None
     method = None
     dataset = None
+    results_filename = None
 
     if rank == 0:
 
@@ -167,13 +168,13 @@ if __name__ == "__main__":
         failures = 0
 
         ts = time.localtime(time.time())
-        date_time = '-validation-static-{}-{}_{}_{}-{}_{}_{}.csv'.format(args.task, ts[0], ts[1], ts[2], ts[3], ts[4], ts[5])
+        date_time = '-validation-static-{}_{}_{}-{}_{}_{}.csv'.format(ts[0], ts[1], ts[2], ts[3], ts[4], ts[5])
 
         if args.save:
             results_filename = config.get("validation").get("save_results_name")+date_time
-            results_file = open(
-                os.path.join(config.get("validation").get("save_results"), results_filename), "w"
-            )
+            #results_file = open(
+            #    os.path.join(config.get("validation").get("save_results"), results_filename), "w"
+            #)
 
         with open(args.model, "rb") as f:
             import dill as pickle
@@ -249,8 +250,21 @@ if __name__ == "__main__":
             print(f"{method},{dataset},{np.mean(reward)},{1-np.mean(reward)},{sum(costs)/len(costs)},{np.std(costs)},{sum(length_actions) / len(length_actions)},{np.std(length_actions)}")
 
         if args.save:
-            results_file.write(f"method,dataset,correct,wrong,mean_cost,std_cost,mean_length,std_length" + '\n')
-            results_file.write(f"{method},{dataset},{reward}, {1-np.mean(reward)}, {sum(costs)/len(costs)},{np.std(costs)},{sum(length_actions) / len(length_actions)},{np.std(length_actions)}" + '\n')
-            results_file.close()
+            #results_file.write(f"method,dataset,correct,wrong,mean_cost,std_cost,mean_length,std_length" + '\n')
+            #results_file.write(f"{method},{dataset},{reward}, {1-np.mean(reward)}, {sum(costs)/len(costs)},{np.std(costs)},{sum(length_actions) / len(length_actions)},{np.std(length_actions)}" + '\n')
+            #results_file.close()
+
+            # Save sequences to file
+            #df_sequences = []
+            #for k, x in enumerate(traces):
+            #    for p, a in x:
+            #        df_sequences.append([k, env.get_program_from_index(p), a])
+
+            # Create a dataframe and save sequences to disk
+            best_sequences = pd.DataFrame(traces, columns=["id", "program", "arguments"])
+            best_sequences.to_csv(
+                os.path.join(config.get("validation").get("save_results"),
+                                 f"traces-{method}-{dataset}-{results_filename}"),
+                    index=None)
 
 

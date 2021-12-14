@@ -10,6 +10,8 @@ import time
 import os
 from tqdm import tqdm
 
+import pandas as pd
+
 if __name__ == "__main__":
 
     parser = ArgumentParser()
@@ -75,17 +77,19 @@ if __name__ == "__main__":
     mcts_rewards = []
     mcts_cost = []
     mcts_length = []
+    best_sequences = []
     failures = 0.0
 
     ts = time.localtime(time.time())
-    date_time = '-{}-{}_{}_{}-{}_{}_{}.csv'.format(args.task, ts[0], ts[1], ts[2], ts[3], ts[4], ts[5])
+    date_time = '-{}-{}_{}_{}-{}_{}.csv'.format(ts[0], ts[1], ts[2], ts[3], ts[4], ts[5])
 
     results_file = None
+    results_filename=None
     if args.save:
         results_filename = config.get("validation").get("save_results_name")+date_time
-        results_file = open(
-            os.path.join(config.get("validation").get("save_results"), results_filename), "w"
-        )
+        #results_file = open(
+        #    os.path.join(config.get("validation").get("save_results"), results_filename), "w"
+        #)
 
     iterations = min(int(config.get("validation").get("iterations")), len(env.data))
     for _ in tqdm(range(0, iterations), disable=args.to_stdout):
@@ -98,6 +102,7 @@ if __name__ == "__main__":
             mcts_rewards_normalized.append(1.0)
             mcts_cost.append(cost)
             mcts_length.append(length)
+            best_sequences.append(trace.get_trace_programs())
         else:
             mcts_rewards.append(0.0)
             mcts_rewards_normalized.append(0.0)
@@ -122,6 +127,19 @@ if __name__ == "__main__":
 
     # Save results to a file
     if args.save:
-        results_file.write(f"method,dataset,correct,wrong,mean_cost,std_cost,mean_length,std_length\n")
-        results_file.write(complete + '\n')
-        results_file.close()
+        #results_file.write(f"method,dataset,correct,wrong,mean_cost,std_cost,mean_length,std_length\n")
+        #results_file.write(complete + '\n')
+        #results_file.close()
+
+        # Save sequences to file
+        df_sequences = []
+        for k, x in enumerate(best_sequences):
+            for p, a in x:
+                df_sequences.append([k, env.get_program_from_index(p), a])
+
+        # Create a dataframe and save sequences to disk
+        if df_sequences:
+            best_sequences = pd.DataFrame(df_sequences, columns=["id", "program", "arguments"])
+            best_sequences.to_csv(
+                os.path.join(config.get("validation").get("save_results"), f"traces-{method}-{dataset}-{results_filename}"),
+                index=None)
