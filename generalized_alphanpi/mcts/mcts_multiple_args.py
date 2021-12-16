@@ -434,7 +434,7 @@ class MCTSMultipleArgs(MCTS):
 
                 q_val_action += self.action_cost_coeff * np.exp(-self.env.get_cost(child.program_from_parent_index, child.args_index))
 
-                if (child.program_from_parent_index, child.args_index) in repeated_actions:
+                if child.program_from_parent_index in repeated_actions:
                     q_val_action += self.action_cost_coeff * np.exp(-(repeated_actions_penalty+1))
                 else:
                     q_val_action += self.action_cost_coeff * np.exp(-repeated_actions_penalty)
@@ -451,12 +451,11 @@ class MCTSMultipleArgs(MCTS):
         while node.parent is not None:
 
             program_to_call_index = node.program_from_parent_index
-            arguments = node.args_index
 
-            if (program_to_call_index, arguments) in current_actions:
-                current_actions[(program_to_call_index, arguments)] += 1
+            if program_to_call_index in current_actions:
+                current_actions[program_to_call_index] += 1
             else:
-                current_actions[(program_to_call_index, arguments)] = 0
+                current_actions[program_to_call_index] = 0
 
             node = node.parent
 

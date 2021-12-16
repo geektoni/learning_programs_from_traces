@@ -14,7 +14,6 @@ import dill
 
 def validation_recursive_tree(model, env, action, depth, cost, action_list, skip_stop=False):
     if action == "STOP(0)":
-        action_list.append(("STOP", "0"))
         return [[True, env.memory.copy(), cost, action_list]]
     elif depth < 0:
         return [[False, env.memory.copy(), cost, action_list]]
