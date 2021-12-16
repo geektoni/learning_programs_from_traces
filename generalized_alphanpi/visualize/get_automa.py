@@ -47,28 +47,21 @@ class VisualizeAutoma:
                 stack.append(child)
         return nodes
 
-    def add(self, node):
+    def add(self, root_node):
+
         counter = 0
-        nodes = self.get_breadth_first_nodes(node)
+        stack = [root_node]
+        while stack:
+            cur_node = stack[0]
+            stack = stack[1:]
 
-        nodes = list(filter(lambda x: x.visit_count > 0, nodes))
+            if cur_node.selected:
+                self.add_point(cur_node)
+                counter += 1
+                self.real_program_counts.append(counter)
 
-        for idx, tmp_node in enumerate(nodes):
-            tmp_node.index = idx
-
-        # gather nodes per depth
-        max_depth = nodes[-1].depth
-        nodes_per_depth = {}
-        for d in range(0, max_depth + 1):
-            nodes_per_depth[d] = list(filter(lambda x: x.depth == d, nodes))
-
-        for d in range(0, max_depth + 1):
-            nodes_this_depth = nodes_per_depth[d]
-            for tmp_node in nodes_this_depth:
-                if tmp_node.selected:
-                    self.add_point(tmp_node)
-                    counter += 1
-                    self.real_program_counts.append(counter)
+            for child in cur_node.childs:
+                stack.append(child)
 
     def add_point(self, node):
 

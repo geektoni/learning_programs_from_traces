@@ -1,4 +1,4 @@
-from generalized_alphanpi.utils import import_dyn_class, get_cost_from_env, get_cost_from_tree
+from generalized_alphanpi.utils import import_dyn_class, get_cost_from_env, get_cost_from_tree, get_trace
 
 import numpy as np
 
@@ -20,6 +20,7 @@ if __name__ == "__main__":
     parser.add_argument("--config", type=str, help="Path to the file with the experiment configuration")
     parser.add_argument("--save", default=False, action="store_true", help="Save result to file")
     parser.add_argument("--to-stdout", default=False, action="store_true", help="Print results to stdout")
+    parser.add_argument("--skip-stop-cost", default=False, action="store_true", help="Avoid storing the stop cost")
 
     args = parser.parse_args()
     config = yaml.load(open(args.config),Loader=yaml.FullLoader)
@@ -97,12 +98,12 @@ if __name__ == "__main__":
         trace, root_node = mcts.sample_execution_trace()
 
         if trace.rewards[0] > 0:
-            cost, length = get_cost_from_tree(env, root_node)
+            cost, length = get_cost_from_tree(env, root_node, args.skip_stop_cost)
             mcts_rewards.append(trace.rewards[0].item())
             mcts_rewards_normalized.append(1.0)
             mcts_cost.append(cost)
             mcts_length.append(length)
-            best_sequences.append(trace.get_trace_programs())
+            best_sequences.append(get_trace(env, root_node))
         else:
             mcts_rewards.append(0.0)
             mcts_rewards_normalized.append(0.0)
@@ -123,7 +124,7 @@ if __name__ == "__main__":
     #print("Complete:", complete)
     #print("Failures:", failures)
     if args.to_stdout:
-        print(f"{method},{dataset},{mcts_rewards_normalized_mean},{iterations-mcts_rewards_normalized_mean},{mcts_cost_mean},{mcts_cost_std},{mcts_length_mean},{mcts_length_std}")
+        print(f"{method},{dataset},{mcts_rewards_normalized_mean},{1-mcts_rewards_normalized_mean},{mcts_cost_mean},{mcts_cost_std},{mcts_length_mean},{mcts_length_std}")
 
     # Save results to a file
     if args.save:
@@ -135,7 +136,7 @@ if __name__ == "__main__":
         df_sequences = []
         for k, x in enumerate(best_sequences):
             for p, a in x:
-                df_sequences.append([k, env.get_program_from_index(p), a])
+                df_sequences.append([k, p, a])
 
         # Create a dataframe and save sequences to disk
         if df_sequences:
