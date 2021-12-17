@@ -1,5 +1,6 @@
-from generalized_alphanpi.utils import import_dyn_class
-from generalized_alphanpi.visualize.get_trace import MCTSvisualiser
+from generalized_alphanpi.utils import import_dyn_class, get_cost_from_tree
+
+import numpy as np
 
 class Trainer:
 
@@ -16,6 +17,7 @@ class Trainer:
     def perform_validation_step(self, env, task_index):
 
         validation_rewards = []
+        costs = []
         for _ in range(self.num_validation_episodes):
 
             mcts = self.validation_mcts_class(env, self.policy, task_index, exploration=False,
@@ -25,8 +27,11 @@ class Trainer:
             trace, root_node = mcts.sample_execution_trace()
             task_reward = trace.task_reward
 
+            cost, length = get_cost_from_tree(env, root_node)
+            costs.append(cost)
+
             validation_rewards.append(task_reward)
-        return validation_rewards
+        return validation_rewards, np.mean(costs)
 
     def train_one_step(self, traces):
 

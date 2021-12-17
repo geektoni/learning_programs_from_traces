@@ -14,6 +14,8 @@ import yaml
 import time
 import os
 
+from generalized_alphanpi.utils.early_stopping import EarlyStopping
+
 if __name__ == "__main__":
 
     parser = ArgumentParser()
@@ -42,6 +44,9 @@ if __name__ == "__main__":
     env = None
     scheduler = None
     writer = None
+    early_stopping = None
+    early_stopping_reached = False
+    bcast_data = None
 
     seed = config.get("general").get("seed", 0)
 
@@ -117,7 +122,15 @@ if __name__ == "__main__":
 
         writer = SummaryWriter(config.get("general").get("tensorboard_dir"))
 
+        early_stopping = EarlyStopping(patience=config.get("training").get("patience", 10), verbose=True,
+                                       validation_thresh=config.get("training").get("early_stopping_accuracy", 0.90),
+                                       path=save_model_path)
+
     for iteration in range(config.get("training").get("num_iterations")):
+
+        # Kill everything if we reached the earlystopping criterion
+        if early_stopping_reached:
+            break
 
         if rank==0:
             task_index = scheduler.get_next_task_index()
@@ -126,10 +139,16 @@ if __name__ == "__main__":
                 **config.get("training").get("mcts").get("configuration_parameters")
             )
 
+            bcast_data = [mcts, early_stopping_reached]
+
         for episode in range(config.get("training").get("num_episodes_per_iteration")):
 
             if not args.single_core:
-                mcts = comm.bcast(mcts, root=0)
+                mcts, early_stopping_reached = comm.bcast(bcast_data, root=0)
+
+            # Kill everything if we reached the earlystopping criterion
+            if early_stopping_reached:
+                break
 
             traces, _ = mcts.sample_execution_trace()
 
@@ -162,9 +181,13 @@ if __name__ == "__main__":
                     **config.get("training").get("mcts").get("configuration_parameters")
                 )
 
-                validation_rewards = trainer.perform_validation_step(env, idx)
+                validation_rewards, validation_cost = trainer.perform_validation_step(env, idx)
                 scheduler.update_statistics(idx, validation_rewards)
                 scheduler.print_statistics()
+
+                early_stopping(validation_cost, scheduler.get_statistic(idx), policy)
+                if early_stopping.early_stop:
+                    early_stopping_reached = True
 
                 # Disable validation mode (no sampling from failed states, just random)
                 env.validation = False
@@ -180,7 +203,8 @@ if __name__ == "__main__":
             print(f"[**] Done with iteration {iteration}")
 
             # Save policy
-            if config.get("general").get("save_model"):
-                torch.save(policy.state_dict(), save_model_path)
+            # We save the model only when we reach a satisfactory accuracy
+            #if config.get("general").get("save_model"):
+            #    torch.save(policy.state_dict(), save_model_path)
 
 

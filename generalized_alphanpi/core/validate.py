@@ -1,4 +1,4 @@
-from generalized_alphanpi.utils import import_dyn_class, get_cost_from_env, get_cost_from_tree, get_trace
+from generalized_alphanpi.utils import import_dyn_class, get_cost_from_tree, get_trace
 
 import numpy as np
 
