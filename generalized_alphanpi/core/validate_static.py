@@ -12,7 +12,7 @@ from tqdm import tqdm
 
 import dill
 
-def validation_recursive_tree(model, env, action, depth, cost, action_list, skip_stop=False):
+def validation_recursive_tree(model, env, action, depth, cost, action_list):
     if action == "STOP(0)":
         return [[True, env.memory.copy(), cost, action_list]]
     elif depth < 0:
@@ -38,18 +38,17 @@ def validation_recursive_tree(model, env, action, depth, cost, action_list, skip
 
             env.act(action_name, args)
 
-            return validation_recursive_tree(model, env, next_op, depth-1, cost, action_list, skip_stop)
+            return validation_recursive_tree(model, env, next_op, depth-1, cost, action_list)
         else:
 
-            if not skip_stop:
-                action_name, args = next_op.split("(")[0], next_op.split("(")[1].replace(")", "")
+            action_name, args = next_op.split("(")[0], next_op.split("(")[1].replace(")", "")
 
-                action_list.append((action_name, args))
+            action_list.append((action_name, args))
 
-                if args.isnumeric():
-                    args = int(args)
+            if args.isnumeric():
+                args = int(args)
 
-                cost += get_cost_from_env(env, action_name, str(args))
+            cost += get_cost_from_env(env, action_name, str(args))
 
             action_list.append(("STOP", "0"))
             return [[True, env.memory.copy(), cost, action_list]]
@@ -121,7 +120,6 @@ if __name__ == "__main__":
     parser.add_argument("--tree", default=False, action="store_true", help="Replace solver with decision tree")
     parser.add_argument("--save", default=False, action="store_true", help="Save result to file")
     parser.add_argument("--to-stdout", default=False, action="store_true", help="Print results to stdout")
-    parser.add_argument("--skip-stop-cost", default=False, action="store_true", help="Avoid storing the stop cost")
 
     args = parser.parse_args()
     config = yaml.load(open(args.config),Loader=yaml.FullLoader)
@@ -214,7 +212,7 @@ if __name__ == "__main__":
         next_action = "INTERVENE(0)"
 
         if args.tree:
-            results = validation_recursive_tree(model, env, next_action, max_depth, 0, [], skip_stop=args.skip_stop_cost)
+            results = validation_recursive_tree(model, env, next_action, max_depth, 0, [])
         else:
             results = validation_recursive(env, next_action, max_depth, args.alpha)
 

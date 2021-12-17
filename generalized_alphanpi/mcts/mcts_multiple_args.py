@@ -65,10 +65,10 @@ class MCTSMultipleArgs(MCTS):
     def __init__(self, environment, model, task_index: int, number_of_simulations: int =100, exploration=True,
                  dir_epsilon: float=0.03, dir_noise: float=0.3,
                  level_closeness_coeff: float = 3.0, level_0_penalty: float = 1, qvalue_temperature: float = 1.0,
-                 temperature: float = 1.3, c_puct: float = 0.5, gamma: float = 0.97, action_cost_coeff: float = 1.0
-                 ):
+                 temperature: float = 1.3, c_puct: float = 0.5, gamma: float = 0.97, action_cost_coeff: float = 1.0,
+                 action_duplicate_cost: float = 1.0):
         super().__init__(environment, model, task_index, number_of_simulations, exploration, dir_epsilon, dir_noise,
-                         level_closeness_coeff, level_0_penalty, qvalue_temperature, temperature, c_puct, gamma, action_cost_coeff)
+                         level_closeness_coeff, level_0_penalty, qvalue_temperature, temperature, c_puct, gamma, action_cost_coeff, action_duplicate_cost)
         self.lstm_args_states = []
 
     def _expand_node(self, node):
@@ -435,9 +435,9 @@ class MCTSMultipleArgs(MCTS):
                 q_val_action += self.action_cost_coeff * np.exp(-self.env.get_cost(child.program_from_parent_index, child.args_index))
 
                 if child.program_from_parent_index in repeated_actions:
-                    q_val_action += self.action_cost_coeff * np.exp(-(repeated_actions_penalty+1))
+                    q_val_action += self.action_duplicate_cost * np.exp(-(repeated_actions_penalty+1))
                 else:
-                    q_val_action += self.action_cost_coeff * np.exp(-repeated_actions_penalty)
+                    q_val_action += self.action_duplicate_cost * np.exp(-repeated_actions_penalty)
 
                 if q_val_action > best_val:
                     best_val = q_val_action

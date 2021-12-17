@@ -73,7 +73,7 @@ def get_cost_from_env(env, action_name, args, env_state = None):
     return cost
 
 
-def get_cost_from_tree(env, root_node, skip_stop=False):
+def get_cost_from_tree(env, root_node):
 
     cost = []
     stack = [root_node]
@@ -88,12 +88,9 @@ def get_cost_from_tree(env, root_node, skip_stop=False):
 
                 action_name = env.get_program_from_index(cur_node.program_from_parent_index)
 
-                if skip_stop and action_name == "STOP":
-                    cost.append(0)
-                else:
-                    cost.append(
-                        get_cost_from_env(env, action_name, str(cur_node.args), cur_node.env_state.copy())
-                    )
+                cost.append(
+                    get_cost_from_env(env, action_name, str(cur_node.args), cur_node.env_state.copy())
+                )
 
         stack = stack[1:]
         for child in cur_node.childs:

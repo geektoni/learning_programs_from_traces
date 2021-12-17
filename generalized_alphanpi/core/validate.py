@@ -20,7 +20,6 @@ if __name__ == "__main__":
     parser.add_argument("--config", type=str, help="Path to the file with the experiment configuration")
     parser.add_argument("--save", default=False, action="store_true", help="Save result to file")
     parser.add_argument("--to-stdout", default=False, action="store_true", help="Print results to stdout")
-    parser.add_argument("--skip-stop-cost", default=False, action="store_true", help="Avoid storing the stop cost")
 
     args = parser.parse_args()
     config = yaml.load(open(args.config),Loader=yaml.FullLoader)
@@ -98,7 +97,7 @@ if __name__ == "__main__":
         trace, root_node = mcts.sample_execution_trace()
 
         if trace.rewards[0] > 0:
-            cost, length = get_cost_from_tree(env, root_node, args.skip_stop_cost)
+            cost, length = get_cost_from_tree(env, root_node)
             mcts_rewards.append(trace.rewards[0].item())
             mcts_rewards_normalized.append(1.0)
             mcts_cost.append(cost)

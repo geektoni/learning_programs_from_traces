@@ -24,7 +24,6 @@ if __name__ == "__main__":
     parser.add_argument("--tree", default=False, action="store_true", help="Replace solver with decision tree")
     parser.add_argument("--save", default=False, action="store_true", help="Save result to file")
     parser.add_argument("--to-stdout", default=False, action="store_true", help="Print results to stdout")
-    parser.add_argument("--skip-stop-cost", default=False, action="store_true", help="Avoid storing the stop cost")
 
     args = parser.parse_args()
     config = yaml.load(open(args.config), Loader=yaml.FullLoader)
