@@ -24,7 +24,7 @@ def validation_recursive_tree(model, env, action, depth, cost, action_list):
         if isinstance(actions, type(lambda x:0)):
             next_op = actions(None)
         else:
-            next_op = actions.predict([env.get_observation().tolist()[:-1]])[0]
+            next_op = actions.predict([env.get_observation().tolist()])[0]
 
         if next_op != "STOP(0)":
             action_name, args = next_op.split("(")[0], next_op.split("(")[1].replace(")", "")
