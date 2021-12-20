@@ -5,7 +5,9 @@ import numpy as np
 class Environment(ABC):
 
     def __init__(self, prog_to_func, prog_to_precondition, prog_to_postcondition, programs_library, arguments,
-                 max_depth_dict, prog_to_cost=None, complete_arguments=None, sample_from_errors_prob=0.3):
+                 max_depth_dict, prog_to_cost=None, complete_arguments=None, sample_from_errors_prob=0.3,
+                 custom_tensorboard_metrics=None):
+
         self.prog_to_func = prog_to_func
         self.prog_to_precondition = prog_to_precondition
         self.prog_to_postcondition = prog_to_postcondition
@@ -40,7 +42,9 @@ class Environment(ABC):
         self.sample_from_errors_prob = sample_from_errors_prob
         self.validation = False
 
-        self.custom_tensorboard_metrics = {}
+        if custom_tensorboard_metrics is None:
+            custom_tensorboard_metrics = {}
+        self.custom_tensorboard_metrics = custom_tensorboard_metrics
 
         self.init_env()
 
