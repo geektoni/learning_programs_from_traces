@@ -133,9 +133,10 @@ if __name__ == "__main__":
         print(
             f"{method},{dataset},{np.mean(reward)},{1 - np.mean(reward)},{np.mean(costs)},{np.std(costs)},{np.mean(length_actions)},{np.std(length_actions)}")
 
-        # Create a dataframe and save sequences to disk
-        best_sequences = pd.DataFrame(traces, columns=["id", "program", "arguments"])
-        best_sequences.to_csv(
-            os.path.join(config.get("validation").get("save_results"),
-                         f"traces-{method}-{dataset}-{results_filename}"),
-            index=None)
+        if traces:
+            # Create a dataframe and save sequences to disk
+            best_sequences = pd.DataFrame(traces, columns=["id", "program", "arguments"])
+            best_sequences.to_csv(
+                os.path.join(config.get("validation").get("save_results"),
+                             f"traces-{method}-{dataset}-{results_filename}"),
+                index=None)

@@ -273,10 +273,11 @@ if __name__ == "__main__":
             #        df_sequences.append([k, env.get_program_from_index(p), a])
 
             # Create a dataframe and save sequences to disk
-            best_sequences = pd.DataFrame(traces, columns=["id", "program", "arguments"])
-            best_sequences.to_csv(
-                os.path.join(config.get("validation").get("save_results"),
-                                 f"traces-{method}-{dataset}-{results_filename}"),
-                    index=None)
+            if traces:
+                best_sequences = pd.DataFrame(traces, columns=["id", "program", "arguments"])
+                best_sequences.to_csv(
+                    os.path.join(config.get("validation").get("save_results"),
+                                     f"traces-{method}-{dataset}-{results_filename}"),
+                        index=None)
 
 
