@@ -160,6 +160,9 @@ class MCTS(ABC):
         self.rewards = []
         self.mcts_policies = []
 
+        for k in self.env.custom_tensorboard_metrics:
+            self.env.custom_tensorboard_metrics[k] = 0
+
     @abstractmethod
     def _expand_node(self, node: Node):
         pass
