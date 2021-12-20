@@ -259,7 +259,7 @@ if __name__ == "__main__":
         length_actions = length_actions if length_actions else [0]
 
         if args.to_stdout:
-            print(f"{method},{dataset},{np.mean(reward)},{1 - np.mean(reward)},{np.mean(costs)},{np.std(costs)},{np.mean(length_actions)},{np.std(length_actions)}")
+            print(f"{method},{dataset},{np.mean(reward)},{1 - np.mean(reward)},{np.mean(costs)},{np.std(costs)},{np.mean(length_actions)},{np.std(length_actions)},0.0,0.0")
 
         if args.save:
             #results_file.write(f"method,dataset,correct,wrong,mean_cost,std_cost,mean_length,std_length" + '\n')

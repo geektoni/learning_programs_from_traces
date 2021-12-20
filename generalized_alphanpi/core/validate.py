@@ -78,6 +78,7 @@ if __name__ == "__main__":
     mcts_cost = []
     mcts_length = []
     best_sequences = []
+    custom_metrics = {k:[] for k in env.custom_tensorboard_metrics}
     failures = 0.0
 
     ts = time.localtime(time.time())
@@ -108,6 +109,9 @@ if __name__ == "__main__":
             mcts_rewards_normalized.append(0.0)
             failures += 1
 
+        for k in env.custom_tensorboard_metrics:
+            custom_metrics[k].append(env.custom_tensorboard_metrics.get(k, 0))
+
     mcts_rewards_normalized_mean = np.mean(np.array(mcts_rewards_normalized))
     mcts_rewards_normalized_std = np.std(np.array(mcts_rewards_normalized))
     mcts_rewards_mean = np.mean(np.array(mcts_rewards))
@@ -122,8 +126,15 @@ if __name__ == "__main__":
     #print(f"correct,wrong,mean_cost,std_cost,mean_length,std_length")
     #print("Complete:", complete)
     #print("Failures:", failures)
+
+    # Custom metric string
+    cst_complete = ""
+    for k in env.custom_tensorboard_metrics:
+        cst_complete += f"{np.mean(custom_metrics.get(k))}{np.std(custom_metrics.get(k))},"
+    cst_complete = cst_complete[:-1]  # Remove last comma
+
     if args.to_stdout:
-        print(f"{method},{dataset},{mcts_rewards_normalized_mean},{1-mcts_rewards_normalized_mean},{mcts_cost_mean},{mcts_cost_std},{mcts_length_mean},{mcts_length_std}")
+        print(f"{method},{dataset},{mcts_rewards_normalized_mean},{1-mcts_rewards_normalized_mean},{mcts_cost_mean},{mcts_cost_std},{mcts_length_mean},{mcts_length_std},{cst_complete}")
 
     # Save results to a file
     if args.save:

@@ -131,7 +131,7 @@ if __name__ == "__main__":
 
     if args.to_stdout:
         print(
-            f"{method},{dataset},{np.mean(reward)},{1 - np.mean(reward)},{np.mean(costs)},{np.std(costs)},{np.mean(length_actions)},{np.std(length_actions)}")
+            f"{method},{dataset},{np.mean(reward)},{1 - np.mean(reward)},{np.mean(costs)},{np.std(costs)},{np.mean(length_actions)},{np.std(length_actions)},0.0,0.0")
 
         if traces:
             # Create a dataframe and save sequences to disk
