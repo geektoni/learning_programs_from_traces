@@ -130,7 +130,7 @@ if __name__ == "__main__":
     # Custom metric string
     cst_complete = ""
     for k in env.custom_tensorboard_metrics:
-        cst_complete += f"{np.mean(custom_metrics.get(k))}{np.std(custom_metrics.get(k))},"
+        cst_complete += f"{np.mean(custom_metrics.get(k))},{np.std(custom_metrics.get(k))},"
     cst_complete = cst_complete[:-1]  # Remove last comma
 
     if args.to_stdout:
