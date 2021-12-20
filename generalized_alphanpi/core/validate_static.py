@@ -254,8 +254,12 @@ if __name__ == "__main__":
         #print("Mean/std cost: ", sum(costs)/len(costs), np.std(costs))
         #print("Mean/std length actions: ", sum(length_actions) / len(length_actions), np.std(length_actions))
 
+        # Fix if they are empty
+        costs = costs if costs else [0]
+        length_actions = length_actions if length_actions else [0]
+
         if args.to_stdout:
-            print(f"{method},{dataset},{np.mean(reward)},{1-np.mean(reward)},{sum(costs)/len(costs)},{np.std(costs)},{sum(length_actions) / len(length_actions)},{np.std(length_actions)}")
+            print(f"{method},{dataset},{np.mean(reward)},{1 - np.mean(reward)},{np.mean(costs)},{np.std(costs)},{np.mean(length_actions)},{np.std(length_actions)}")
 
         if args.save:
             #results_file.write(f"method,dataset,correct,wrong,mean_cost,std_cost,mean_length,std_length" + '\n')
