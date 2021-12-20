@@ -141,6 +141,10 @@ if __name__ == "__main__":
 
             bcast_data = [mcts, early_stopping_reached]
 
+        act_loss_total = []
+        crit_loss_total = []
+        args_loss_total = []
+
         for episode in range(config.get("training").get("num_episodes_per_iteration")):
 
             if not args.single_core:
@@ -161,14 +165,22 @@ if __name__ == "__main__":
 
                 act_loss, crit_loss, args_loss = trainer.train_one_step(traces)
 
+                act_loss_total.append(act_loss)
+                crit_loss_total.append(crit_loss)
+                args_loss_total.append(args_loss)
+
                 v_task_name = env.get_program_from_index(task_index)
-                writer.add_scalar("loss/" + v_task_name + "/actor", act_loss, iteration)
-                writer.add_scalar("loss/" + v_task_name + "/value", crit_loss, iteration)
-                writer.add_scalar("loss/" + v_task_name + "/arguments", args_loss, iteration)
+                writer.add_scalar("loss/" + v_task_name + "/actor", np.mean(act_loss_total), iteration)
+                writer.add_scalar("loss/" + v_task_name + "/value", np.mean(crit_loss_total), iteration)
+                writer.add_scalar("loss/" + v_task_name + "/arguments", np.mean(args_loss_total), iteration)
 
                 print(f"Done {episode}/10! s:{buffer.get_total_successful_traces()}, f:{buffer.get_total_failed_traces()}")
 
         if rank == 0:
+
+            # Print on tensorboard additionals metrics if there are
+            for k in env.custom_tensoarboard_metrics:
+                writer.add_scalar("custom/" + env.get_program_from_index(task_index) + f"/{k}", env.custom_tensoarboard_metrics.get(k), iteration)
 
             for idx in scheduler.get_tasks_of_maximum_level():
                 task_level = env.get_program_level_from_index(idx)
