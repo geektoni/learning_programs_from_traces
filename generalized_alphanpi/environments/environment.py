@@ -40,7 +40,7 @@ class Environment(ABC):
         self.sample_from_errors_prob = sample_from_errors_prob
         self.validation = False
 
-        self.custom_tensoarboard_metrics = {}
+        self.custom_tensorboard_metrics = {}
 
         self.init_env()
 

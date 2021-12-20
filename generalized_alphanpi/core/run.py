@@ -179,7 +179,7 @@ if __name__ == "__main__":
         if rank == 0:
 
             # Print on tensorboard additionals metrics if there are
-            for k in env.custom_tensoarboard_metrics:
+            for k in env.custom_tensorboard_metrics:
                 writer.add_scalar("custom/" + env.get_program_from_index(task_index) + f"/{k}", env.custom_tensoarboard_metrics.get(k), iteration)
 
             for idx in scheduler.get_tasks_of_maximum_level():
