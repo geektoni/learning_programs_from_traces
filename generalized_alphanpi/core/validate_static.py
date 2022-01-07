@@ -10,20 +10,68 @@ import time
 import os
 from tqdm import tqdm
 
+from sklearn.tree import _tree
+
 import dill
 
-def validation_recursive_tree(model, env, action, depth, cost, action_list):
+def extract_rule_from_tree(model, instance):
+
+    feature = model.tree_.feature
+    threshold = model.tree_.threshold
+
+    feature_name = [
+        instance.columns[i] if i != _tree.TREE_UNDEFINED else "undefined!"
+        for i in feature
+    ]
+
+    node_indicator = model.decision_path(instance.values.tolist())
+    leaf_id = model.apply(instance.values.tolist())
+
+    sample_id = 0
+    # obtain ids of the nodes `sample_id` goes through, i.e., row `sample_id`
+    node_index = node_indicator.indices[
+                 node_indicator.indptr[sample_id]: node_indicator.indptr[sample_id + 1]
+                 ]
+
+    rules_detected = []
+
+    for node_id in node_index:
+
+        # continue to the next node if it is a leaf node
+        if leaf_id[sample_id] == node_id:
+            continue
+
+        # check if value of the split feature for sample 0 is below threshold
+        if instance[feature_name[node_id]].values[0] <= threshold[node_id]:
+            threshold_sign = "<="
+        else:
+            threshold_sign = ">"
+
+        inst_value = "True" if instance[feature_name[node_id]].values[0] else "False"
+        negation = "" if instance[feature_name[node_id]].values[0] else "not"
+
+        rules_detected.append(
+            #f"{feature_name[node_id]} = {inst_value} {threshold_sign} {threshold[node_id]}"
+            f"{negation} {feature_name[node_id]}".strip()
+        )
+
+    return rules_detected
+
+def validation_recursive_tree(model, env, action, depth, cost, action_list, rules):
     if action == "STOP(0)":
-        return [[True, env.memory.copy(), cost, action_list]]
+        return [[True, env.memory.copy(), cost, action_list, rules]]
     elif depth < 0:
-        return [[False, env.memory.copy(), cost, action_list]]
+        return [[False, env.memory.copy(), cost, action_list, rules]]
     else:
         node_name = action.split("(")[0]
         actions = model.get(node_name)
 
         if isinstance(actions, type(lambda x:0)):
             next_op = actions(None)
+            rules.append(["True"])
         else:
+            obs_inst = pd.DataFrame([env.get_observation().tolist()], columns=env.get_observation_columns())
+            rules.append(extract_rule_from_tree(actions, obs_inst))
             next_op = actions.predict([env.get_observation().tolist()])[0]
 
         if next_op != "STOP(0)":
@@ -38,7 +86,7 @@ def validation_recursive_tree(model, env, action, depth, cost, action_list):
 
             env.act(action_name, args)
 
-            return validation_recursive_tree(model, env, next_op, depth-1, cost, action_list)
+            return validation_recursive_tree(model, env, next_op, depth-1, cost, action_list, rules)
         else:
 
             action_name, args = next_op.split("(")[0], next_op.split("(")[1].replace(")", "")
@@ -51,7 +99,7 @@ def validation_recursive_tree(model, env, action, depth, cost, action_list):
             cost += get_cost_from_env(env, action_name, str(args))
 
             action_list.append(("STOP", "0"))
-            return [[True, env.memory.copy(), cost, action_list]]
+            return [[True, env.memory.copy(), cost, action_list, rules]]
 
 
 def validation_recursive(env, action, depth, alpha=0.65):
@@ -141,6 +189,7 @@ if __name__ == "__main__":
     costs = None
     total_actions = None
     length_actions = None
+    total_rules = None
     method = None
     dataset = None
     results_filename = None
@@ -195,6 +244,7 @@ if __name__ == "__main__":
         costs = []
         total_actions = []
         length_actions = []
+        total_rules=[]
 
     iterations = min(int(config.get("validation").get("iterations")), len(env.data))
 
@@ -212,7 +262,7 @@ if __name__ == "__main__":
         next_action = "INTERVENE(0)"
 
         if args.tree:
-            results = validation_recursive_tree(model, env, next_action, max_depth, 0, [])
+            results = validation_recursive_tree(model, env, next_action, max_depth, 0, [], [])
         else:
             results = validation_recursive(env, next_action, max_depth, args.alpha)
 
@@ -229,6 +279,7 @@ if __name__ == "__main__":
                         reward.append(1)
                         costs.append(r[2])
                         total_actions.append(r[3])
+                        total_rules.append(r[4])
                         length_actions.append(len(r[3]))
                         break
                     else:
@@ -241,13 +292,13 @@ if __name__ == "__main__":
         # Create dataframe with the complete actions
         traces = []
 
-        for k, trace in enumerate(total_actions):
-            for p, a in trace:
+        for k, (trace, rules) in enumerate(zip(total_actions, total_rules)):
+            for (p, a), r in zip(trace, rules):
                 traces.append([
-                    k, p, a
+                    k, p, a, " AND ".join(r)
                 ])
 
-        t = pd.DataFrame(traces, columns=["id", "program", "argument"])
+        t = pd.DataFrame(traces, columns=["id", "program", "argument", "rule"])
 
         #print("Correct:", reward)
         #print("Failures:", iterations-reward)
@@ -274,7 +325,7 @@ if __name__ == "__main__":
 
             # Create a dataframe and save sequences to disk
             if traces:
-                best_sequences = pd.DataFrame(traces, columns=["id", "program", "arguments"])
+                best_sequences = pd.DataFrame(traces, columns=["id", "program", "arguments", "rule"])
                 best_sequences.to_csv(
                     os.path.join(config.get("validation").get("save_results"),
                                      f"traces-{method}-{dataset}-{results_filename}"),
