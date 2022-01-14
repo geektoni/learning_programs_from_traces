@@ -8,8 +8,8 @@ if __name__ == "__main__":
         packages=find_packages(include=["generalized_alphanpi", "generalized_alphanpi.*"]),
         url='',
         license='MIT',
-        author='Giovanni De Toni',
-        author_email='giovanni.detoni@unitn.it',
+        author='XXXXXXX',
+        author_email='XXXXXX',
         description='',
         platforms="any",
     )
