@@ -216,7 +216,7 @@ if __name__ == "__main__":
 
             # Save policy
             # We save the model only when we reach a satisfactory accuracy
-            #if config.get("general").get("save_model"):
-            #    torch.save(policy.state_dict(), save_model_path)
+            if config.get("general").get("save_model"):
+                torch.save(policy.state_dict(), save_model_path)
 
 

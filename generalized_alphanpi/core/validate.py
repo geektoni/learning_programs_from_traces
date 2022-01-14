@@ -73,6 +73,7 @@ if __name__ == "__main__":
     mcts.number_of_simulations = 5
     mcts.env.validation = True
 
+    idusers = []
     mcts_rewards_normalized = []
     mcts_rewards = []
     mcts_cost = []
@@ -93,12 +94,13 @@ if __name__ == "__main__":
         #)
 
     iterations = min(int(config.get("validation").get("iterations")), len(env.data))
-    for _ in tqdm(range(0, iterations), disable=args.to_stdout):
+    for iduser in tqdm(range(0, iterations), disable=args.to_stdout):
 
         trace, root_node = mcts.sample_execution_trace()
 
         if trace.rewards[0] > 0:
             cost, length = get_cost_from_tree(env, root_node)
+            idusers.append(iduser)
             mcts_rewards.append(trace.rewards[0].item())
             mcts_rewards_normalized.append(1.0)
             mcts_cost.append(cost)
@@ -144,7 +146,7 @@ if __name__ == "__main__":
 
         # Save sequences to file
         df_sequences = []
-        for k, x in enumerate(best_sequences):
+        for (k, x) in zip(idusers, best_sequences):
             for p, a in x:
                 df_sequences.append([k, p, a])
 

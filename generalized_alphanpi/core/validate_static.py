@@ -82,6 +82,13 @@ def validation_recursive_tree(model, env, action, depth, cost, action_list, rule
             if args.isnumeric():
                 args = int(args)
 
+            precondition_satisfied = True
+            if not env.prog_to_precondition.get(action_name)(args):
+                precondition_satisfied = False
+
+            if not precondition_satisfied:
+                return [[False, env.memory.copy(), cost, action_list, rules]]
+
             cost += get_cost_from_env(env, action_name, str(args))
 
             env.act(action_name, args)
@@ -98,7 +105,7 @@ def validation_recursive_tree(model, env, action, depth, cost, action_list, rule
 
             cost += get_cost_from_env(env, action_name, str(args))
 
-            action_list.append(("STOP", "0"))
+            #action_list.append(("STOP", "0"))
             return [[True, env.memory.copy(), cost, action_list, rules]]
 
 
@@ -187,8 +194,10 @@ if __name__ == "__main__":
     reward = 0
     results_file = None
     costs = None
+    idusers = None
     total_actions = None
     length_actions = None
+    length_rules = None
     total_rules = None
     method = None
     dataset = None
@@ -242,13 +251,15 @@ if __name__ == "__main__":
 
         reward = []
         costs = []
+        idusers = []
         total_actions = []
         length_actions = []
+        length_rules = []
         total_rules=[]
 
     iterations = min(int(config.get("validation").get("iterations")), len(env.data))
 
-    for _ in tqdm(range(0, iterations//size), disable=args.to_stdout):
+    for iduser in tqdm(range(0, iterations//size), disable=args.to_stdout):
 
         if not args.single_core:
             env = comm.bcast(env, root=0)
@@ -271,28 +282,30 @@ if __name__ == "__main__":
         else:
             results = [results]
 
+        env.end_task()
+
         if rank == 0:
             for R in results:
                 for r in R:
                     env.memory = r[1]
                     if env.prog_to_postcondition[env.get_program_from_index(idx)](None, None) and r[0]:
                         reward.append(1)
+                        idusers.append(iduser)
                         costs.append(r[2])
                         total_actions.append(r[3])
+                        length_rules += [len(x) for x in r[4]]
                         total_rules.append(r[4])
                         length_actions.append(len(r[3]))
                         break
                     else:
                         reward.append(0)
 
-        env.end_task()
-
     if rank == 0:
 
         # Create dataframe with the complete actions
         traces = []
 
-        for k, (trace, rules) in enumerate(zip(total_actions, total_rules)):
+        for (k, trace, rules) in zip(idusers,total_actions, total_rules):
             for (p, a), r in zip(trace, rules):
                 traces.append([
                     k, p, a, " AND ".join(r)
@@ -310,7 +323,7 @@ if __name__ == "__main__":
         length_actions = length_actions if length_actions else [0]
 
         if args.to_stdout:
-            print(f"{method},{dataset},{np.mean(reward)},{1 - np.mean(reward)},{np.mean(costs)},{np.std(costs)},{np.mean(length_actions)},{np.std(length_actions)},0.0,0.0")
+            print(f"{method},{dataset},{np.mean(reward)},{1 - np.mean(reward)},{np.mean(costs)},{np.std(costs)},{np.mean(length_actions)},{np.std(length_actions)},0.0,0.0,{np.mean(length_rules)},{np.std(length_rules)}")
 
         if args.save:
             #results_file.write(f"method,dataset,correct,wrong,mean_cost,std_cost,mean_length,std_length" + '\n')
