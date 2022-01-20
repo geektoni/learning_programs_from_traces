@@ -34,7 +34,18 @@ class ArgumentsNet(Module):
 
 
 class ArgumentsSingleNet(Module):
-    def __init__(self, hidden_size, argument_ranges=None):
+    """
+    Class which models a single argument network
+    """
+
+    def __init__(self, hidden_size: int, argument_ranges: list=None):
+        """
+
+        :param hidden_size: size of the hidden linear state. The size is
+        cut in half at each layer (e.g., 8 --> 4 --> len(argument_ranges))
+        :param argument_ranges: list which contains the total possible arguments
+        """
+
         super(ArgumentsSingleNet, self).__init__()
         if argument_ranges is None:
             argument_ranges = [1,2,3]
