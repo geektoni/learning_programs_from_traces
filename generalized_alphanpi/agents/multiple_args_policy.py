@@ -17,8 +17,8 @@ class ArgumentsNet(Module):
             "CAT": ["A", "B", "C"]
         }
 
-        :param hidden_size:
-        :param args_types_available:
+        :param hidden_size: size of the hidden arguments networks
+        :param args_types_available: dictionary with all available arguments
         """
         super(ArgumentsNet, self).__init__()
 
@@ -27,6 +27,11 @@ class ArgumentsNet(Module):
             self.arguments.append(ArgumentsSingleNet(hidden_size, argument_ranges=a))
 
     def forward(self, x):
+        """
+        Predict the next arguments, concatenate the results
+        :param x: input
+        :return: distribution probability over the arguments
+        """
         results = []
         for i, l in enumerate(self.arguments):
             results.append(self.arguments[i](x))
