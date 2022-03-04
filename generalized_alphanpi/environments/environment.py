@@ -1,5 +1,8 @@
 from abc import ABC, abstractmethod
 import numpy as np
+import pandas as pd
+import pickle
+import torch
 
 
 class Environment(ABC):
@@ -47,6 +50,42 @@ class Environment(ABC):
         self.custom_tensorboard_metrics = custom_tensorboard_metrics
 
         self.init_env()
+
+
+    def setup_system(self, boolean_cols, categorical_cols, encoder, scaler,
+                      classifier, net_class, sample_env, net_layers=5, net_size=108):
+        self.parsed_columns = boolean_cols + categorical_cols
+
+        self.complete_arguments = []
+
+        for k, v in self.arguments.items():
+            self.complete_arguments += v
+
+        self.arguments_index = [(i, v) for i, v in enumerate(self.complete_arguments)]
+
+        self.max_depth_dict = {1: 5}
+
+        for idx, key in enumerate(sorted(list(self.programs_library.keys()))):
+            self.programs_library[key]['index'] = idx
+
+        # Load encoder
+        self.data_encoder = pickle.load(open(encoder, "rb"))
+        self.data_scaler = pickle.load(open(scaler, "rb"))
+
+        # Load the classifier
+        checkpoint = torch.load(classifier)
+        self.classifier = net_class(net_size, layers=net_layers)  # Taken empirically from the classifier
+        self.classifier.load_state_dict(checkpoint)
+
+        # Needed for validation
+        self.sample_env = sample_env
+        self.current_idx = 0
+
+        # Custom metric we want to print at each iteration
+        self.custom_tensorboard_metrics = {
+            "call_to_the_classifier": 0
+        }
+
 
     def start_task(self, task_index):
 
