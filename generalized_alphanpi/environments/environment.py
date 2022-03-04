@@ -51,6 +51,18 @@ class Environment(ABC):
 
         self.init_env()
 
+    def setup_dataset(self, dataset, bad_class_value, target_column, predicted_column):
+
+        self.data = pd.read_csv(dataset, sep=",")
+        self.data = self.data.dropna()  # Drop columns with na
+        self.data = self.data[self.data[target_column] == bad_class_value]
+        self.data = self.data[self.data[predicted_column] == self.data[target_column]]
+
+        self.y = self.data[target_column]
+        self.y.reset_index(drop=True, inplace=True)
+
+        self.data = self.data.drop(columns=[target_column, predicted_column])
+        self.data.reset_index(drop=True, inplace=True)
 
     def setup_system(self, boolean_cols, categorical_cols, encoder, scaler,
                       classifier, net_class, sample_env, net_layers=5, net_size=108):
