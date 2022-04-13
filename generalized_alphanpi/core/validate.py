@@ -67,11 +67,11 @@ if __name__ == "__main__":
 
     mcts = MCTS_CLASS(
         env, policy, idx,
-        **config.get("training").get("mcts").get("configuration_parameters")
+        **config.get("validation").get("mcts").get("configuration_parameters", {})
     )
-    mcts.exploration = False
-    mcts.number_of_simulations = 5
-    mcts.env.validation = True
+    #mcts.exploration = False
+    #mcts.number_of_simulations = 5
+    #mcts.env.validation = True
 
     idusers = []
     mcts_rewards_normalized = []

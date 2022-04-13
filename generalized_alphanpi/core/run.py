@@ -138,7 +138,6 @@ if __name__ == "__main__":
                 env, policy, task_index,
                 **config.get("training").get("mcts").get("configuration_parameters")
             )
-
             bcast_data = [mcts, early_stopping_reached]
 
         act_loss_total = []
@@ -174,7 +173,7 @@ if __name__ == "__main__":
                 writer.add_scalar("loss/" + v_task_name + "/value", np.mean(crit_loss_total), iteration)
                 writer.add_scalar("loss/" + v_task_name + "/arguments", np.mean(args_loss_total), iteration)
 
-                print(f"Done {episode}/10! s:{buffer.get_total_successful_traces()}, f:{buffer.get_total_failed_traces()}")
+                print(f"Done {episode}/{config.get('training').get('num_episodes_per_iteration')}! s:{buffer.get_total_successful_traces()}, f:{buffer.get_total_failed_traces()}")
 
         if rank == 0:
 
