@@ -9,7 +9,7 @@ class Environment(ABC):
 
     def __init__(self, prog_to_func, prog_to_precondition, prog_to_postcondition, programs_library, arguments,
                  max_depth_dict, prog_to_cost=None, complete_arguments=None, sample_from_errors_prob=0.3,
-                 custom_tensorboard_metrics=None):
+                 custom_tensorboard_metrics=None, validation=False):
 
         self.prog_to_func = prog_to_func
         self.prog_to_precondition = prog_to_precondition
@@ -43,7 +43,7 @@ class Environment(ABC):
         }
         self.max_failed_envs = 200
         self.sample_from_errors_prob = sample_from_errors_prob
-        self.validation = False
+        self.validation = validation
 
         if custom_tensorboard_metrics is None:
             custom_tensorboard_metrics = {}

@@ -10,6 +10,8 @@ import time
 import os
 from tqdm import tqdm
 
+import random
+
 import pandas as pd
 
 if __name__ == "__main__":
@@ -23,6 +25,14 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     config = yaml.load(open(args.config),Loader=yaml.FullLoader)
+
+    seed = config.get("general").get("seed", 0)
+
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
     env = import_dyn_class(config.get("environment").get("name"))(
         **config.get("environment").get("configuration_parameters", {}),
