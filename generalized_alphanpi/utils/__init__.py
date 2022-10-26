@@ -56,8 +56,8 @@ def get_cost_from_env(env, action_name, args, env_state = None):
 
     tmp_state = None
     if env_state is not None:
-        tmp_state = env.memory.copy()
-        env.memory = env_state
+        tmp_state = env.get_state()
+        env.reset_to_state(env_state)
 
     if args.isnumeric():
         args = int(args)
@@ -68,7 +68,7 @@ def get_cost_from_env(env, action_name, args, env_state = None):
     cost = env.get_cost(action_index, args_index)
 
     if tmp_state:
-        env.memory = tmp_state
+        env.reset_to_state(tmp_state)
 
     return cost
 

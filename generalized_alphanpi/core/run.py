@@ -106,6 +106,8 @@ if __name__ == "__main__":
         if config.get("policy").get("pretrained_model", None) is not None:
             policy.load_state_dict(torch.load(config.get("policy").get("pretrained_model")))
 
+        print(policy)
+
         # Set up the trainer algorithm
         trainer = Trainer(policy, buffer, config.get("training").get("mcts").get("name"),
                           batch_size=config.get("training").get("trainer").get("batch_size"))

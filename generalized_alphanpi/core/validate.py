@@ -21,6 +21,7 @@ if __name__ == "__main__":
     parser.add_argument("task", type=str, help="Task we want to execute")
     parser.add_argument("--config", type=str, help="Path to the file with the experiment configuration")
     parser.add_argument("--save", default=False, action="store_true", help="Save result to file")
+    parser.add_argument("--output", type=str, help="Override file name output.")
     parser.add_argument("--to-stdout", default=False, action="store_true", help="Print results to stdout")
 
     args = parser.parse_args()
@@ -162,7 +163,10 @@ if __name__ == "__main__":
 
         # Create a dataframe and save sequences to disk
         if df_sequences:
+
+            file_name_output = f"traces-{method}-{dataset}-{results_filename}" if not args.output else args.output
+
             best_sequences = pd.DataFrame(df_sequences, columns=["id", "program", "arguments"])
             best_sequences.to_csv(
-                os.path.join(config.get("validation").get("save_results"), f"traces-{method}-{dataset}-{results_filename}"),
+                os.path.join(config.get("validation").get("save_results"), file_name_output),
                 index=None)
